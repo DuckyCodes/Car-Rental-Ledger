@@ -477,35 +477,66 @@ export function useLedgerCalculations({
   const profit = operatingProfit - estimatedDep;
   const cashFlow = completedRevenue - cashExpenses;
   const chartData = useMemo(() => {
-    const availableMonths = Array.from(
-      new Set([
-        ...rentals.map((r) => monthKey(r.end_date)),
-        ...expenses.map((e) => monthKey(e.date)),
-        today().slice(0, 7),
-      ]),
-    )
-      .filter(Boolean)
-      .sort();
-    const chartMonths = month === "all" ? availableMonths : [month];
-    return chartMonths.map((key) => {
+    const allDates = [
+      ...rentals.map((r) => r.end_date),
+      ...expenses.map((e) => e.date),
+      today(),
+    ].sort();
+    const start =
+      month === "all"
+        ? allDates[0] || today()
+        : month + "-01";
+    const end =
+      month === "all"
+        ? today()
+        : new Date(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0)
+            .toISOString()
+            .slice(0, 10);
+    const dates: string[] = [];
+    for (
+      let cursor = new Date(start + "T12:00:00");
+      cursor <= new Date(end + "T12:00:00");
+      cursor.setDate(cursor.getDate() + 1)
+    ) {
+      dates.push(cursor.toISOString().slice(0, 10));
+    }
+    return dates.map((date) => {
+      const key = monthKey(date);
+      const days = daysInMonth(key);
       const rs = rentals.filter(
-        (r) => monthKey(r.end_date) === key && r.end_date <= today(),
+        (r) => r.end_date === date && r.end_date <= today(),
       );
       const inc = rs.reduce((s, r) => s + rentalRevenue(r), 0);
+      const recordedCosts = expenses
+        .filter(
+          (e) =>
+            expenseAppliesToMonth(e, key) &&
+            !isManualFinanceEntry(e) &&
+            (e.recurring_monthly || e.date === date),
+        )
+        .reduce(
+          (s, e) =>
+            s +
+            (e.recurring_monthly
+              ? num(e.amount) / days
+              : num(e.amount)),
+          0,
+        );
+      const automaticCosts =
+        (cars.reduce((s, c) => s + insuranceCostForMonth(c, key), 0) +
+          automaticInterestForMonth(key)) /
+        days;
       const cost =
-        expenses
-          .filter(
-            (e) => expenseAppliesToMonth(e, key) && !isManualFinanceEntry(e),
-          )
-          .reduce((s, e) => s + num(e.amount), automaticInterestForMonth(key)) +
+        recordedCosts +
+        automaticCosts +
         rs.reduce(
           (s, r) => s + rentalDepreciation(r) + rentalPlatformCosts(r),
           0,
         );
       return {
-        month: new Date(key + "-01T12:00:00").toLocaleDateString("en-CA", {
+        day: new Date(date + "T12:00:00").toLocaleDateString("en-CA", {
           month: "short",
-          year: chartMonths.length > 12 ? "numeric" : undefined,
+          day: "numeric",
         }),
         income: Math.round(inc),
         costs: Math.round(cost),

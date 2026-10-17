@@ -145,7 +145,13 @@ export function RentalsPage({ context }: { context: PageContext }) {
               </tr>
             </thead>
             <tbody>
-              {rentals.map((r) => {
+              {[...rentals]
+                .sort(
+                  (a, b) =>
+                    b.start_date.localeCompare(a.start_date) ||
+                    b.identification - a.identification,
+                )
+                .map((r) => {
                 const gross = rentalRevenue(r),
                   adjustments = rentalTuroAdjustments(r),
                   earnings = rentalEarnings(r),
@@ -194,7 +200,7 @@ export function RentalsPage({ context }: { context: PageContext }) {
                     </td>
                   </tr>
                 );
-              })}
+                })}
             </tbody>
           </table>
         </div>

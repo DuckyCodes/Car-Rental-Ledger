@@ -109,6 +109,13 @@ export function OverviewPage({ context }: { context: PageContext }) {
     totalVehicleKilometres,
     depreciationDescription,
   } = context;
+  const showCalculation = (details: {
+    title: string;
+    definition: string;
+    formula: string;
+    items: { label: string; value: string }[];
+  }) => setCalculationDetails(details);
+  const completedRentals = monthRentals.filter((r) => r.end_date <= today());
   return (
     <>
       <div className="toolbar">
@@ -135,6 +142,21 @@ export function OverviewPage({ context }: { context: PageContext }) {
           hint="Includes active and completed bookings"
           icon={<CircleDollarSign />}
           tone="green"
+          onInfo={() =>
+            showCalculation({
+              title: "Booked rental revenue",
+              definition:
+                "Revenue from every booking overlapping the selected period, including active bookings.",
+              formula: "Sum of rental revenue for selected bookings",
+              items: [
+                ...monthRentals.map((r) => ({
+                  label: `Booking #${r.identification}${r.renter ? ` — ${r.renter}` : ""}`,
+                  value: money(rentalRevenue(r)),
+                })),
+                { label: "Booked revenue", value: money(revenue) },
+              ],
+            })
+          }
         />
         <Metric
           label="Completed rental income"
@@ -142,6 +164,21 @@ export function OverviewPage({ context }: { context: PageContext }) {
           hint="Completed bookings; revenue recognized"
           icon={<CircleDollarSign />}
           tone="green"
+          onInfo={() =>
+            showCalculation({
+              title: "Completed rental income",
+              definition:
+                "Revenue from selected bookings whose end date has passed or is today.",
+              formula: "Sum of rental revenue where end date ≤ today",
+              items: [
+                ...completedRentals.map((r) => ({
+                  label: `Booking #${r.identification}${r.renter ? ` — ${r.renter}` : ""}`,
+                  value: money(rentalRevenue(r)),
+                })),
+                { label: "Completed income", value: money(completedRevenue) },
+              ],
+            })
+          }
         />
         <Metric
           label="Operating costs (excluding principal)"
@@ -149,6 +186,18 @@ export function OverviewPage({ context }: { context: PageContext }) {
           hint="Used for profit; excludes loan principal"
           icon={<Receipt />}
           tone="orange"
+          onInfo={() =>
+            showCalculation({
+              title: "Operating costs",
+              definition:
+                "Costs used in the profit estimate. Loan principal is excluded because it reduces the loan balance rather than being an operating cost.",
+              formula: "Insurance + interest + other operating costs",
+              items: [
+                { label: "Booked revenue", value: money(revenue) },
+                { label: "Operating costs", value: money(monthExpenses) },
+              ],
+            })
+          }
         />
         <Metric
           label="Cash expenses (including principal)"
@@ -189,6 +238,24 @@ export function OverviewPage({ context }: { context: PageContext }) {
           hint={`${monthRentals.length} bookings`}
           icon={<Wallet />}
           tone="blue"
+          onInfo={() =>
+            showCalculation({
+              title: "Average rental revenue",
+              definition: "Average revenue per selected booking.",
+              formula: "Booked revenue ÷ selected bookings with revenue",
+              items: [
+                {
+                  label: "Revenue used",
+                  value: money(context.revenueTrackedTotal ?? 0),
+                },
+                {
+                  label: "Bookings used",
+                  value: `${context.revenueTrackedRentals?.length ?? 0}`,
+                },
+                { label: "Average", value: money(averageRentalRevenue) },
+              ],
+            })
+          }
         />
         <Metric
           label="Average kilometres"
@@ -196,6 +263,24 @@ export function OverviewPage({ context }: { context: PageContext }) {
           hint="Per booking"
           icon={<Gauge />}
           tone="purple"
+          onInfo={() =>
+            showCalculation({
+              title: "Average kilometres",
+              definition: "Average distance driven per booking with recorded distance.",
+              formula: "Recorded rental km ÷ bookings with recorded distance",
+              items: [
+                {
+                  label: "Kilometres used",
+                  value: `${context.distanceTrackedKilometres ?? monthKm} km`,
+                },
+                {
+                  label: "Bookings used",
+                  value: `${context.distanceTrackedRentals?.length ?? 0}`,
+                },
+                { label: "Average", value: `${Math.round(averageKilometres).toLocaleString()} km` },
+              ],
+            })
+          }
         />
         <Metric
           label="Daily average kilometres"
@@ -203,6 +288,24 @@ export function OverviewPage({ context }: { context: PageContext }) {
           hint="Per rental day"
           icon={<Gauge />}
           tone="purple"
+          onInfo={() =>
+            showCalculation({
+              title: "Daily average kilometres",
+              definition: "Average distance driven per rental day.",
+              formula: "Recorded rental km ÷ recorded rental days",
+              items: [
+                {
+                  label: "Kilometres used",
+                  value: `${context.distanceTrackedKilometres ?? monthKm} km`,
+                },
+                {
+                  label: "Rental days used",
+                  value: `${context.distanceTrackedRentalDays ?? rentalDays}`,
+                },
+                { label: "Average per day", value: `${Math.round(averageDailyKilometres).toLocaleString()} km` },
+              ],
+            })
+          }
         />
         <Metric
           label="Operating profit"
@@ -210,6 +313,18 @@ export function OverviewPage({ context }: { context: PageContext }) {
           hint="Revenue − operating costs"
           icon={<ChartNoAxesCombined />}
           tone={operatingProfit >= 0 ? "blue" : "red"}
+          onInfo={() =>
+            showCalculation({
+              title: "Operating profit",
+              definition: "Estimated profit before depreciation and loan principal.",
+              formula: "Booked rental revenue − operating costs",
+              items: [
+                { label: "Booked revenue", value: money(revenue) },
+                { label: "Operating costs", value: money(monthExpenses) },
+                { label: "Operating profit", value: money(operatingProfit) },
+              ],
+            })
+          }
         />
         <Metric
           label="Cash profit before principal"
@@ -217,6 +332,19 @@ export function OverviewPage({ context }: { context: PageContext }) {
           hint="Completed income − cash operating costs"
           icon={<Wallet />}
           tone={cashProfitBeforePrincipal >= 0 ? "purple" : "red"}
+          onInfo={() =>
+            showCalculation({
+              title: "Cash profit before principal",
+              definition: "Completed income after cash operating costs, before loan principal.",
+              formula: "Completed income − (cash expenses − loan principal)",
+              items: [
+                { label: "Completed income", value: money(completedRevenue) },
+                { label: "Cash expenses", value: money(cashExpenses) },
+                { label: "Loan principal", value: money(principal) },
+                { label: "Cash profit before principal", value: money(cashProfitBeforePrincipal) },
+              ],
+            })
+          }
         />
         <Metric
           label="Net income (estimated)"
@@ -224,6 +352,18 @@ export function OverviewPage({ context }: { context: PageContext }) {
           hint="After estimated depreciation"
           icon={<ChartNoAxesCombined />}
           tone={profit >= 0 ? "blue" : "red"}
+          onInfo={() =>
+            showCalculation({
+              title: "Net income (estimated)",
+              definition: "Operating profit after estimated vehicle depreciation.",
+              formula: "Operating profit − estimated depreciation",
+              items: [
+                { label: "Operating profit", value: money(operatingProfit) },
+                { label: "Estimated depreciation", value: money(estimatedDep) },
+                { label: "Estimated net income", value: money(profit) },
+              ],
+            })
+          }
         />
         <Metric
           label="Cash flow (completed income)"
@@ -231,6 +371,19 @@ export function OverviewPage({ context }: { context: PageContext }) {
           hint={`Completed income − cash expenses; depreciation excluded; includes ${money(principal)} loan principal`}
           icon={<Activity />}
           tone={cashFlow >= 0 ? "purple" : "red"}
+          onInfo={() =>
+            showCalculation({
+              title: "Cash flow",
+              definition: "Completed income remaining after all recorded cash expenses, including loan principal.",
+              formula: "Completed income − cash expenses",
+              items: [
+                { label: "Completed income", value: money(completedRevenue) },
+                { label: "Cash expenses", value: money(cashExpenses) },
+                { label: "Cash flow", value: money(cashFlow) },
+                { label: "Loan principal included", value: money(principal) },
+              ],
+            })
+          }
         />
       </div>
       <div className="note-box metric-explainer">
@@ -249,7 +402,7 @@ export function OverviewPage({ context }: { context: PageContext }) {
           <div className="panel-heading">
             <div>
               <h3>Income vs costs</h3>
-              <p>Six-month trend, by rental start month</p>
+          <p>Daily income and costs for the selected period</p>
             </div>
             <span className="legend">
               <i className="income-dot" /> Income <i className="cost-dot" />{" "}
@@ -278,7 +431,7 @@ export function OverviewPage({ context }: { context: PageContext }) {
                   stroke="#e8edf2"
                 />
                 <XAxis
-                  dataKey="month"
+                  dataKey="day"
                   tickLine={false}
                   axisLine={false}
                   tick={{ fontSize: 12, fill: "#8490a0" }}
