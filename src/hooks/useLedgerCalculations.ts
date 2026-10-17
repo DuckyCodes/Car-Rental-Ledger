@@ -27,17 +27,20 @@ export function useLedgerCalculations({
   const carName = (identification: number | null | undefined) =>
     cars.find((c) => c.identification === identification)?.name || "Unassigned";
   const rentalRevenue = (r: Rental) => {
-    const directIncome =
-      num(r.daily_rate) * dateDiff(r.start_date, r.end_date) +
-      num(r.extra_km_revenue);
+    const directBaseIncome =
+      num(r.direct_total_income) > 0
+        ? num(r.direct_total_income)
+        : num(r.daily_rate) * dateDiff(r.start_date, r.end_date);
+    const directIncome = directBaseIncome + num(r.extra_km_revenue);
     const turoIncome =
       num(r.turo_gross_income) > 0 ? num(r.turo_gross_income) : directIncome;
+    const otherVehicleIncome =
+      r.booking_source === "Turo" ? 0 : num(r.other_revenue);
     return (
       turoIncome +
       num(r.damage_fee) +
-      num(r.admin_fee) +
       num(r.cleaning_fee) +
-      num(r.other_revenue) +
+      otherVehicleIncome +
       Math.max(
         0,
         num(r.end_km) -
@@ -47,6 +50,16 @@ export function useLedgerCalculations({
         num(r.extra_km_rate)
     );
   };
+  const rentalTuroAdjustments = (r: Rental) =>
+    num(r.turo_gross_income) > 0
+      ? num(r.turo_fee) +
+        num(r.turo_provincial_sales_tax) +
+        num(r.turo_goods_services_tax) +
+        num(r.on_trip_charging_fee) +
+        num(r.post_trip_charging_fee)
+      : 0;
+  const rentalEarnings = (r: Rental) =>
+    Math.max(0, rentalRevenue(r) - rentalTuroAdjustments(r));
   const rentalPlatformCosts = (_r: Rental) => 0;
   const expenseAppliesToMonth = (expense: Expense, monthKeyValue: string) =>
     monthKey(expense.date) === monthKeyValue ||
@@ -510,6 +523,8 @@ export function useLedgerCalculations({
   return {
     carName,
     rentalRevenue,
+    rentalTuroAdjustments,
+    rentalEarnings,
     rentalPlatformCosts,
     expenseAppliesToMonth,
     recurringMonthsThroughToday,

@@ -32,6 +32,7 @@ export type Rental = {
   manually_entered_total_kilometres: number;
   commercial_insurance_used: number;
   daily_rate: number;
+  direct_total_income: number;
   extra_km_rate: number;
   included_km_per_day: number;
   extra_km_revenue: number;
@@ -41,6 +42,7 @@ export type Rental = {
   turo_provincial_sales_tax: number;
   turo_goods_services_tax: number;
   on_trip_charging_fee: number;
+  post_trip_charging_fee: number;
   other_platform_fee: number;
   damage_fee: number;
   admin_fee: number;
@@ -128,6 +130,7 @@ export const blankRental = {
   manually_entered_total_kilometres: 0,
   commercial_insurance_used: 0,
   daily_rate: 0,
+  direct_total_income: 0,
   extra_km_rate: 0.5,
   included_km_per_day: 200,
   extra_km_revenue: 0,
@@ -137,6 +140,7 @@ export const blankRental = {
   turo_provincial_sales_tax: 0,
   turo_goods_services_tax: 0,
   on_trip_charging_fee: 0,
+  post_trip_charging_fee: 0,
   other_platform_fee: 0,
   damage_fee: 0,
   admin_fee: 0,

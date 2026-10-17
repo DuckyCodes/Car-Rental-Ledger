@@ -62,8 +62,9 @@ export function RentalsPage({ context }: { context: PageContext }) {
     num,
     today,
     rentalRevenue,
+    rentalTuroAdjustments,
+    rentalEarnings,
     rentalDistance,
-    rentalDepreciation,
     expensesFor,
     rentalPlatformCosts,
     search,
@@ -106,15 +107,17 @@ export function RentalsPage({ context }: { context: PageContext }) {
     isManualFinanceEntry,
     insuranceCostForMonth,
     insuranceConfigured,
-    totalVehicleKilometres,
-    depreciationDescription,
   } = context;
   return (
     <>
       <div className="toolbar">
         <div>
           <h2>Bookings & rental profitability</h2>
-          <p>Each booking estimates revenue, kilometres and depreciation.</p>
+          <p>
+            Each row shows gross revenue, Turo reimbursements/fees, and the
+            amount left after booking-linked costs. Vehicle lifetime mileage
+            and depreciation are kept in vehicle reports.
+          </p>
         </div>
         <button className="secondary" onClick={() => openNew("rental")}>
           <Plus size={16} /> Add rental
@@ -135,21 +138,18 @@ export function RentalsPage({ context }: { context: PageContext }) {
                 <th>Vehicle</th>
                 <th>Dates</th>
                 <th>Rental km</th>
-                <th>Total km</th>
-                <th>Revenue</th>
-                <th>Est. depreciation</th>
-                <th>Net before other costs</th>
+                <th>Gross revenue</th>
+                <th>Turo adjustments</th>
+                <th>Trip net after costs</th>
                 <th />
               </tr>
             </thead>
             <tbody>
               {rentals.map((r) => {
-                const rev = rentalRevenue(r),
+                const gross = rentalRevenue(r),
+                  adjustments = rentalTuroAdjustments(r),
+                  earnings = rentalEarnings(r),
                   km = rentalDistance(r),
-                  dep = rentalDepreciation(r),
-                  vehicle = cars.find(
-                    (c) => c.identification === r.vehicle_identification,
-                  ),
                   linked = expensesFor(r.identification)
                     .filter((e) => e.treatment !== "loan_principal")
                     .reduce((s, e) => s + num(e.amount), 0);
@@ -165,23 +165,16 @@ export function RentalsPage({ context }: { context: PageContext }) {
                       <span className="cell-sub">to {r.end_date}</span>
                     </td>
                     <td>{km.toLocaleString()} km</td>
-                    <td>
-                      {(vehicle
-                        ? totalVehicleKilometres(vehicle)
-                        : 0
-                      ).toLocaleString()}{" "}
-                      km
-                    </td>
-                    <td className="positive">{money(rev)}</td>
-                    <td>{money(dep)}</td>
+                    <td className="positive">{money(gross)}</td>
+                    <td>{adjustments ? `−${money(adjustments)}` : money(0)}</td>
                     <td
                       className={
-                        rev - dep - linked - rentalPlatformCosts(r) >= 0
+                        earnings - linked - rentalPlatformCosts(r) >= 0
                           ? "positive"
                           : "negative"
                       }
                     >
-                      {money(rev - dep - linked - dep - rentalPlatformCosts(r))}
+                      {money(earnings - linked - rentalPlatformCosts(r))}
                     </td>
                     <td>
                       <div className="row-actions">

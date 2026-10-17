@@ -39,6 +39,7 @@ export function RentalForm({
           ),
           commercial_insurance_used: d.commercial_insurance_used ? 1 : 0,
           daily_rate: num(d.daily_rate),
+          direct_total_income: num(d.direct_total_income),
           extra_km_rate: num(d.extra_km_rate),
           included_km_per_day: num(d.included_km_per_day),
           extra_km_revenue: num(d.extra_km_revenue),
@@ -48,6 +49,7 @@ export function RentalForm({
           turo_provincial_sales_tax: num(d.turo_provincial_sales_tax),
           turo_goods_services_tax: num(d.turo_goods_services_tax),
           on_trip_charging_fee: num(d.on_trip_charging_fee),
+          post_trip_charging_fee: num(d.post_trip_charging_fee),
           other_platform_fee: num(d.other_platform_fee),
           damage_fee: num(d.damage_fee),
           admin_fee: num(d.admin_fee),
@@ -106,7 +108,7 @@ export function RentalForm({
               onChange={(e) => set("turo_discount", e.target.value)}
             />
           </Field>
-          <Field label="Turo fees (reference only; excluded from totals)">
+          <Field label="Turo fees (subtracted from trip earnings)">
             <input
               type="number"
               min="0"
@@ -115,7 +117,7 @@ export function RentalForm({
               onChange={(e) => set("turo_fee", e.target.value)}
             />
           </Field>
-          <Field label="Provincial sales tax (reference only; excluded from totals)">
+          <Field label="Provincial sales tax (subtracted from trip earnings)">
             <input
               type="number"
               min="0"
@@ -124,7 +126,7 @@ export function RentalForm({
               onChange={(e) => set("turo_provincial_sales_tax", e.target.value)}
             />
           </Field>
-          <Field label="Goods and services tax (reference only; excluded from totals)">
+          <Field label="Goods and services tax (subtracted from trip earnings)">
             <input
               type="number"
               min="0"
@@ -133,13 +135,22 @@ export function RentalForm({
               onChange={(e) => set("turo_goods_services_tax", e.target.value)}
             />
           </Field>
-          <Field label="On-trip charging reimbursement (reference only; excluded from totals)">
+          <Field label="On-trip charging reimbursement (subtracted from trip earnings)">
             <input
               type="number"
               min="0"
               step="0.01"
               value={d.on_trip_charging_fee}
               onChange={(e) => set("on_trip_charging_fee", e.target.value)}
+            />
+          </Field>
+          <Field label="Post-trip charging reimbursement (subtracted from trip earnings)">
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={d.post_trip_charging_fee}
+              onChange={(e) => set("post_trip_charging_fee", e.target.value)}
             />
           </Field>
           <Field label="Other Turo fees (reference only; excluded from totals)">
@@ -152,6 +163,17 @@ export function RentalForm({
             />
           </Field>
         </>
+      )}
+      {d.booking_source === "Direct" && (
+        <Field label="Total direct rental income (CAD; overrides daily income)">
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value={d.direct_total_income}
+            onChange={(e) => set("direct_total_income", e.target.value)}
+          />
+        </Field>
       )}
       <Field label="Renter / booking name">
         <input
@@ -230,7 +252,7 @@ export function RentalForm({
           onChange={(e) => set("damage_fee", e.target.value)}
         />
       </Field>
-      <Field label="Admin fees (CAD)">
+      <Field label="Admin fee (reference only; excluded from totals)">
         <input
           type="number"
           min="0"

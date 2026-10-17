@@ -109,6 +109,20 @@ export function ReportsPage({ context }: { context: PageContext }) {
     totalVehicleKilometres,
     depreciationDescription,
   } = context;
+  const showCalculation = (details: {
+    title: string;
+    definition: string;
+    formula: string;
+    items: { label: string; value: string }[];
+  }) => setCalculationDetails(details);
+
+  const bookingCount = monthRentals.length;
+  const distanceBookingCount = monthRentals.filter(
+    (r) => rentalDistance(r) > 0,
+  ).length;
+  const revenueBookingCount = monthRentals.filter(
+    (r) => rentalRevenue(r) > 0,
+  ).length;
   return (
     <>
       <div className="toolbar">
@@ -143,6 +157,18 @@ export function ReportsPage({ context }: { context: PageContext }) {
           hint="Bookings overlapping selected period"
           icon={<CircleDollarSign />}
           tone="green"
+          onInfo={() =>
+            showCalculation({
+              title: "Rental revenue",
+              definition:
+                "Total revenue from every booking overlapping the selected period. Turo gross income is used when recorded; Turo fee, tax, discount, and charging reimbursement fields are reference-only.",
+              formula: "Sum of rentalRevenue for selected bookings",
+              items: [
+                { label: "Bookings included", value: `${bookingCount}` },
+                { label: "Rental revenue", value: money(revenue) },
+              ],
+            })
+          }
         />
         <Metric
           label="Completed rental income"
@@ -150,6 +176,21 @@ export function ReportsPage({ context }: { context: PageContext }) {
           hint="Completed bookings; revenue recognized"
           icon={<CircleDollarSign />}
           tone="green"
+          onInfo={() =>
+            showCalculation({
+              title: "Completed rental income",
+              definition:
+                "Revenue from selected bookings whose end date is today or earlier. This is the completed income used for cash-flow reporting.",
+              formula: "Sum of rentalRevenue where end date ≤ today",
+              items: [
+                {
+                  label: "Completed bookings",
+                  value: `${context.completedMonthRentals?.length ?? 0}`,
+                },
+                { label: "Completed income", value: money(completedRevenue) },
+              ],
+            })
+          }
         />
         <Metric
           label="Cash outflow"
@@ -157,6 +198,15 @@ export function ReportsPage({ context }: { context: PageContext }) {
           hint="Includes loan principal"
           icon={<Wallet />}
           tone="orange"
+          onInfo={() =>
+            showCalculation({
+              title: "Cash outflow",
+              definition:
+                "The amount of cash recorded as leaving the business in the selected period. It includes finance payments and loan principal.",
+              formula: "Cash expenses including principal",
+              items: [{ label: "Cash outflow", value: money(cashExpenses) }],
+            })
+          }
         />
         <Metric
           label="Cash expenses (including principal)"
@@ -164,6 +214,20 @@ export function ReportsPage({ context }: { context: PageContext }) {
           hint="Recorded cash outflows, including loan principal"
           icon={<Receipt />}
           tone="orange"
+          onInfo={() =>
+            showCalculation({
+              title: "Cash expenses",
+              definition:
+                "Actual cash expenses for the selected period. Depreciation is not cash and is excluded. Finance includes automatic loan payments when configured and manual finance entries when recorded.",
+              formula: "Insurance + finance payments + other cash expenses",
+              items: [
+                { label: "Insurance", value: money(cashExpenseBreakdown.insurance) },
+                { label: "Finance payments", value: money(cashExpenseBreakdown.finance) },
+                { label: "Other cash expenses", value: money(cashExpenseBreakdown.other) },
+                { label: "Cash expenses total", value: money(cashExpenses) },
+              ],
+            })
+          }
         />
         <Metric
           label="Average rental revenue"
@@ -171,6 +235,19 @@ export function ReportsPage({ context }: { context: PageContext }) {
           hint={`${monthRentals.length} bookings`}
           icon={<Wallet />}
           tone="blue"
+          onInfo={() =>
+            showCalculation({
+              title: "Average rental revenue",
+              definition:
+                "Average revenue per selected booking with recorded revenue. Bookings with zero revenue are excluded from the denominator.",
+              formula: "Revenue from revenue-tracked bookings ÷ revenue-tracked bookings",
+              items: [
+                { label: "Revenue-tracked bookings", value: `${revenueBookingCount}` },
+                { label: "Revenue used", value: money(context.revenueTrackedTotal ?? 0) },
+                { label: "Average", value: money(averageRentalRevenue) },
+              ],
+            })
+          }
         />
         <Metric
           label="Average kilometres"
@@ -178,6 +255,19 @@ export function ReportsPage({ context }: { context: PageContext }) {
           hint="Per booking"
           icon={<Gauge />}
           tone="purple"
+          onInfo={() =>
+            showCalculation({
+              title: "Average kilometres",
+              definition:
+                "Average distance driven per booking with valid odometer readings.",
+              formula: "Distance-tracked kilometres ÷ bookings with distance",
+              items: [
+                { label: "Distance-tracked bookings", value: `${distanceBookingCount}` },
+                { label: "Distance used", value: `${monthKm.toLocaleString()} km` },
+                { label: "Average", value: `${Math.round(averageKilometres).toLocaleString()} km` },
+              ],
+            })
+          }
         />
         <Metric
           label="Average revenue / rental day"
@@ -185,6 +275,19 @@ export function ReportsPage({ context }: { context: PageContext }) {
           hint={`${rentalDays} rental days`}
           icon={<CircleDollarSign />}
           tone="green"
+          onInfo={() =>
+            showCalculation({
+              title: "Average revenue per rental day",
+              definition:
+                "Average revenue earned for each rental day across bookings with recorded revenue.",
+              formula: "Revenue-tracked revenue ÷ revenue-tracked rental days",
+              items: [
+                { label: "Revenue used", value: money(context.revenueTrackedTotal ?? 0) },
+                { label: "Rental days", value: `${context.revenueTrackedDays ?? 0}` },
+                { label: "Average per day", value: money(averageRevenuePerRentalDay) },
+              ],
+            })
+          }
         />
         <Metric
           label="Daily average kilometres"
@@ -192,6 +295,19 @@ export function ReportsPage({ context }: { context: PageContext }) {
           hint="Per rental day"
           icon={<Gauge />}
           tone="purple"
+          onInfo={() =>
+            showCalculation({
+              title: "Daily average kilometres",
+              definition:
+                "Average distance driven per rental day across bookings with valid distance readings.",
+              formula: "Distance-tracked kilometres ÷ distance-tracked rental days",
+              items: [
+                { label: "Distance used", value: `${monthKm.toLocaleString()} km` },
+                { label: "Rental days", value: `${context.distanceTrackedRentalDays ?? 0}` },
+                { label: "Average per day", value: `${Math.round(averageDailyKilometres).toLocaleString()} km` },
+              ],
+            })
+          }
         />
         <Metric
           label="Average booking length"
@@ -199,6 +315,19 @@ export function ReportsPage({ context }: { context: PageContext }) {
           hint="Per booking"
           icon={<Wallet />}
           tone="blue"
+          onInfo={() =>
+            showCalculation({
+              title: "Average booking length",
+              definition:
+                "Average number of rental days for bookings with recorded revenue.",
+              formula: "Revenue-tracked rental days ÷ revenue-tracked bookings",
+              items: [
+                { label: "Rental days", value: `${context.revenueTrackedDays ?? 0}` },
+                { label: "Bookings", value: `${revenueBookingCount}` },
+                { label: "Average length", value: `${averageBookingLength.toFixed(1)} days` },
+              ],
+            })
+          }
         />
         <Metric
           label="Revenue per kilometre"
@@ -206,6 +335,19 @@ export function ReportsPage({ context }: { context: PageContext }) {
           hint="Average earned per km"
           icon={<CircleDollarSign />}
           tone="green"
+          onInfo={() =>
+            showCalculation({
+              title: "Revenue per kilometre",
+              definition:
+                "Average rental revenue generated for each kilometre recorded on bookings with valid distance readings.",
+              formula: "Revenue from distance-tracked bookings ÷ distance-tracked kilometres",
+              items: [
+                { label: "Revenue used", value: money(context.distanceTrackedRevenue ?? 0) },
+                { label: "Distance used", value: `${context.distanceTrackedKilometres ?? 0} km` },
+                { label: "Revenue per km", value: money(revenuePerKilometre) },
+              ],
+            })
+          }
         />
         <Metric
           label="Operating profit"
@@ -213,6 +355,19 @@ export function ReportsPage({ context }: { context: PageContext }) {
           hint="Revenue − operating costs"
           icon={<ChartNoAxesCombined />}
           tone={operatingProfit >= 0 ? "blue" : "red"}
+          onInfo={() =>
+            showCalculation({
+              title: "Operating profit",
+              definition:
+                "Estimated profit before depreciation. Loan principal is excluded because it reduces the loan balance rather than representing an operating cost.",
+              formula: "Rental revenue − operating costs",
+              items: [
+                { label: "Rental revenue", value: money(revenue) },
+                { label: "Operating costs", value: money(monthExpenses) },
+                { label: "Operating profit", value: money(operatingProfit) },
+              ],
+            })
+          }
         />
         <Metric
           label="Cash profit before principal"
@@ -220,6 +375,20 @@ export function ReportsPage({ context }: { context: PageContext }) {
           hint="Completed income − cash operating costs"
           icon={<Wallet />}
           tone={cashProfitBeforePrincipal >= 0 ? "purple" : "red"}
+          onInfo={() =>
+            showCalculation({
+              title: "Cash profit before principal",
+              definition:
+                "Completed rental income remaining after cash expenses other than loan principal. This shows the result before debt-balance repayments.",
+              formula: "Completed income − (cash expenses − loan principal)",
+              items: [
+                { label: "Completed income", value: money(completedRevenue) },
+                { label: "Cash expenses", value: money(cashExpenses) },
+                { label: "Loan principal", value: money(principal) },
+                { label: "Cash profit before principal", value: money(cashProfitBeforePrincipal) },
+              ],
+            })
+          }
         />
         <Metric
           label="Net income (estimated)"
@@ -227,6 +396,19 @@ export function ReportsPage({ context }: { context: PageContext }) {
           hint="Revenue − non-principal costs − depreciation"
           icon={<ChartNoAxesCombined />}
           tone={profit >= 0 ? "blue" : "red"}
+          onInfo={() =>
+            showCalculation({
+              title: "Net income (estimated)",
+              definition:
+                "Management estimate of profit after operating costs and estimated vehicle depreciation. It is not a tax or formal accounting statement.",
+              formula: "Operating profit − estimated depreciation",
+              items: [
+                { label: "Operating profit", value: money(operatingProfit) },
+                { label: "Estimated depreciation", value: money(estimatedDep) },
+                { label: "Estimated net income", value: money(profit) },
+              ],
+            })
+          }
         />
         <Metric
           label="Distance recorded"
@@ -234,6 +416,19 @@ export function ReportsPage({ context }: { context: PageContext }) {
           hint={`Estimated depreciation ${money(estimatedDep)}`}
           icon={<Gauge />}
           tone="purple"
+          onInfo={() =>
+            showCalculation({
+              title: "Distance recorded",
+              definition:
+                "Total rental distance calculated from each booking's odometer end reading minus its start reading. The depreciation estimate uses the vehicle's configured depreciation model.",
+              formula: "Sum of max(odometer end − odometer start, 0)",
+              items: [
+                { label: "Bookings with distance", value: `${distanceBookingCount}` },
+                { label: "Distance recorded", value: `${monthKm.toLocaleString()} km` },
+                { label: "Estimated depreciation", value: money(estimatedDep) },
+              ],
+            })
+          }
         />
       </div>
       <div className="panel report-panel">

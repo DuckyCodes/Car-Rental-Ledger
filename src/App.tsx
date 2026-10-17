@@ -80,6 +80,8 @@ function App() {
   const {
     carName,
     rentalRevenue,
+    rentalTuroAdjustments,
+    rentalEarnings,
     rentalPlatformCosts,
     expenseAppliesToMonth,
     recurringMonthsThroughToday,
@@ -305,6 +307,8 @@ function App() {
     num,
     today,
     rentalRevenue,
+    rentalTuroAdjustments,
+    rentalEarnings,
     rentalDistance,
     rentalDepreciation,
     expensesFor,
