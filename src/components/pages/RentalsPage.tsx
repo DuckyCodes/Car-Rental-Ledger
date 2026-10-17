@@ -61,6 +61,7 @@ export function RentalsPage({ context }: { context: PageContext }) {
     money,
     num,
     today,
+    rentalGrossRevenue,
     rentalRevenue,
     rentalTuroAdjustments,
     rentalEarnings,
@@ -152,7 +153,7 @@ export function RentalsPage({ context }: { context: PageContext }) {
                     b.identification - a.identification,
                 )
                 .map((r) => {
-                const gross = rentalRevenue(r),
+                const gross = rentalGrossRevenue(r),
                   adjustments = rentalTuroAdjustments(r),
                   earnings = rentalEarnings(r),
                   km = rentalDistance(r),

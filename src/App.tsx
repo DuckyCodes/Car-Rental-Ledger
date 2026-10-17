@@ -3,19 +3,8 @@ import { CalculationModal, Metric, Empty, Modal } from "./components/Ui";
 import {
   Activity,
   ArrowDownToLine,
-  ArrowUpRight,
-  CarFront,
-  ChartNoAxesCombined,
-  CircleDollarSign,
-  FileText,
-  Gauge,
-  LayoutDashboard,
   Plus,
-  Receipt,
-  Settings2,
-  Trash2,
   Upload,
-  Wallet,
   Wrench,
   X,
 } from "lucide-react";
@@ -50,6 +39,7 @@ import { RentalsPage } from "./components/pages/RentalsPage";
 import { ExpensesPage } from "./components/pages/ExpensesPage";
 import { ValuationsPage } from "./components/pages/ValuationsPage";
 import { ReportsPage } from "./components/pages/ReportsPage";
+import { AppSidebar } from "./components/AppSidebar";
 import {
   CarForm,
   RentalForm,
@@ -70,6 +60,7 @@ function App() {
   const [editing, setEditing] = useState<any>(null);
   const [search, setSearch] = useState("");
   const [month, setMonth] = useState(today().slice(0, 7));
+  const [allTimeBasis, setAllTimeBasis] = useState<"full-month" | "through-today">("full-month");
   const [carFilter, setCarFilter] = useState("all");
   const [calculationDetails, setCalculationDetails] = useState<{
     title: string;
@@ -79,6 +70,7 @@ function App() {
   } | null>(null);
   const {
     carName,
+    rentalGrossRevenue,
     rentalRevenue,
     rentalTuroAdjustments,
     rentalEarnings,
@@ -100,7 +92,12 @@ function App() {
     automaticFinanceForMonth,
     automaticPrincipalForMonth,
     automaticInterestForMonth,
+    automaticLoanBreakdownForMonth,
+    automaticLoanBreakdownThroughToday,
+    insuranceCostThroughToday,
     isManualFinanceEntry,
+    isManualPrincipalEntry,
+    isManualInterestEntry,
     depreciationDescription,
     expensesFor,
     carExpenses,
@@ -149,6 +146,7 @@ function App() {
     expenses,
     valuations,
     month,
+    allTimeBasis,
     search,
     carFilter,
     depreciationCarIdentification,
@@ -277,16 +275,10 @@ function App() {
       setError("Could not restore backup: " + e.message);
     }
   };
-  const nav: [Tab, any, string][] = [
-    ["Overview", LayoutDashboard, "Dashboard"],
-    ["Cars", CarFront, "Vehicles"],
-    ["Rentals", Wallet, "Bookings"],
-    ["Expenses", Receipt, "Transactions"],
-    ["Valuations", Gauge, "Depreciation"],
-    ["Reports", ChartNoAxesCombined, "Reports"],
-  ];
   const pageContext = {
     month,
+    allTimeBasis,
+    setAllTimeBasis,
     setMonth,
     monthRentals,
     chartData,
@@ -306,6 +298,7 @@ function App() {
     money,
     num,
     today,
+    rentalGrossRevenue,
     rentalRevenue,
     rentalTuroAdjustments,
     rentalEarnings,
@@ -346,12 +339,24 @@ function App() {
     averageBookingLength,
     revenuePerKilometre,
     rentalDays,
+    distanceTrackedRentals,
+    distanceTrackedKilometres,
+    distanceTrackedRevenue,
+    distanceTrackedRentalDays,
+    revenueTrackedRentals,
+    revenueTrackedTotal,
+    revenueTrackedDays,
     loanBreakdownForMonth,
     loanBreakdownThroughMonth,
+    automaticLoanBreakdownForMonth,
+    automaticLoanBreakdownThroughToday,
     expenseAppliesToMonth,
     expenseAmountForPeriod,
     isManualFinanceEntry,
+    isManualPrincipalEntry,
+    isManualInterestEntry,
     insuranceCostForMonth,
+    insuranceCostThroughToday,
     insuranceConfigured,
     totalVehicleKilometres,
     depreciationDescription,
@@ -359,43 +364,12 @@ function App() {
 
   return (
     <div className="app-shell">
-      <aside className="sidebar">
-        <div className="brand">
-          <div className="brand-icon">
-            <CarFront size={23} />
-          </div>
-          <div>
-            <strong>Rental Ledger</strong>
-            <span>LOCAL FINANCE TRACKER</span>
-          </div>
-        </div>
-        <div className="nav-label">WORKSPACE</div>
-        <nav>
-          {nav.map(([key, Icon, label]) => (
-            <button
-              key={key}
-              className={`nav-item ${tab === key ? "active" : ""}`}
-              onClick={() => setTab(key)}
-            >
-              <Icon size={18} />
-              <span>{label}</span>
-              {key === "Expenses" && <small>{expenses.length}</small>}
-            </button>
-          ))}
-        </nav>
-        <div className="sidebar-bottom">
-          <div className="local-badge">
-            <span className="status-dot" />
-            <div>
-              <strong>Local database</strong>
-              <span>Your data stays on this computer</span>
-            </div>
-          </div>
-          <button className="nav-item" onClick={() => setModal("data")}>
-            <Settings2 size={18} /> Data & backups
-          </button>
-        </div>
-      </aside>
+      <AppSidebar
+        tab={tab}
+        setTab={setTab}
+        expensesCount={expenses.length}
+        openData={() => setModal("data")}
+      />
       <main className="main">
         <header className="topbar">
           <div>

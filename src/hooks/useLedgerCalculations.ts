@@ -9,6 +9,7 @@ type Inputs = {
   expenses: Expense[];
   valuations: Valuation[];
   month: string;
+  allTimeBasis: "full-month" | "through-today";
   search: string;
   carFilter: string;
   depreciationCarIdentification: number;
@@ -20,20 +21,37 @@ export function useLedgerCalculations({
   expenses,
   valuations,
   month,
+  allTimeBasis,
   search,
   carFilter,
   depreciationCarIdentification,
 }: Inputs) {
+  const allTimeEndMonth = today().slice(0, 7);
+  const currentMonthFraction =
+    new Date(today() + "T12:00:00").getDate() /
+    new Date(
+      Number(allTimeEndMonth.slice(0, 4)),
+      Number(allTimeEndMonth.slice(5, 7)),
+      0,
+    ).getDate();
+  const allTimeMonthFactor = (monthKeyValue: string) =>
+    allTimeBasis === "through-today" && monthKeyValue === allTimeEndMonth
+      ? currentMonthFraction
+      : 1;
+  const calculationPeriod =
+    month === "all" && allTimeBasis === "through-today"
+      ? "all-through-today"
+      : month;
   const carName = (identification: number | null | undefined) =>
     cars.find((c) => c.identification === identification)?.name || "Unassigned";
-  const rentalRevenue = (r: Rental) => {
+  const rentalGrossRevenue = (r: Rental) => {
     const directBaseIncome =
       num(r.direct_total_income) > 0
         ? num(r.direct_total_income)
         : num(r.daily_rate) * dateDiff(r.start_date, r.end_date);
     const directIncome = directBaseIncome + num(r.extra_km_revenue);
-    const turoIncome =
-      num(r.turo_gross_income) > 0 ? num(r.turo_gross_income) : directIncome;
+    if (num(r.turo_gross_income) > 0) return num(r.turo_gross_income);
+    const turoIncome = directIncome;
     const otherVehicleIncome =
       r.booking_source === "Turo" ? 0 : num(r.other_revenue);
     return (
@@ -58,15 +76,33 @@ export function useLedgerCalculations({
         num(r.on_trip_charging_fee) +
         num(r.post_trip_charging_fee)
       : 0;
-  const rentalEarnings = (r: Rental) =>
-    Math.max(0, rentalRevenue(r) - rentalTuroAdjustments(r));
+  const rentalRevenue = (r: Rental) =>
+    Math.max(0, rentalGrossRevenue(r) - rentalTuroAdjustments(r));
+  const rentalEarnings = (r: Rental) => rentalRevenue(r);
   const rentalPlatformCosts = (_r: Rental) => 0;
-  const expenseAppliesToMonth = (expense: Expense, monthKeyValue: string) =>
-    monthKey(expense.date) === monthKeyValue ||
-    (Boolean(expense.recurring_monthly) &&
-      expense.date <= monthKeyValue + "-31");
+  const expenseAppliesToMonth = (expense: Expense, monthKeyValue: string) => {
+    const vehicle = cars.find(
+      (c) => c.identification === expense.vehicle_identification,
+    );
+    const purchaseMonth = vehicle?.purchase_date
+      ? monthKey(vehicle.purchase_date)
+      : "";
+    return (
+      monthKey(expense.date) === monthKeyValue ||
+      (Boolean(expense.recurring_monthly) &&
+        expense.date <= monthKeyValue + "-31" &&
+        (!purchaseMonth || purchaseMonth <= monthKeyValue))
+    );
+  };
   const recurringMonthsThroughToday = (expense: Expense) => {
-    const start = monthKey(expense.date),
+    const vehicle = cars.find(
+      (c) => c.identification === expense.vehicle_identification,
+    );
+    const expenseStart =
+      vehicle?.purchase_date && vehicle.purchase_date > expense.date
+        ? vehicle.purchase_date
+        : expense.date;
+    const start = monthKey(expenseStart),
       end = today().slice(0, 7);
     if (start > end) return 0;
     return (
@@ -76,19 +112,23 @@ export function useLedgerCalculations({
       1
     );
   };
-  const expenseAmountForPeriod = (expense: Expense, period: string) =>
-    period === "all" && expense.recurring_monthly
-      ? num(expense.amount) * recurringMonthsThroughToday(expense)
-      : num(expense.amount);
+  const expenseAmountForPeriod = (expense: Expense, period: string) => {
+    if (period === "all" && expense.recurring_monthly)
+      return num(expense.amount) * recurringMonthsThroughToday(expense);
+    if (period === "all-through-today" && expense.recurring_monthly) {
+      const months = recurringMonthsThroughToday(expense);
+      if (months === 0) return 0;
+      return num(expense.amount) * (months - 1 + currentMonthFraction);
+    }
+    return num(expense.amount);
+  };
   const rentalDistance = (r: Rental) =>
     num(r.manually_entered_total_kilometres) > 0
       ? num(r.manually_entered_total_kilometres)
       : Math.max(0, num(r.end_km) - num(r.start_km));
-  const totalVehicleKilometres = (c: Car) =>
-    num(c.odometer_km) +
-    rentals
-      .filter((r) => r.vehicle_identification === c.identification)
-      .reduce((sum, r) => sum + rentalDistance(r), 0);
+  // The vehicle odometer is already the vehicle's cumulative distance.
+  // Adding rental km to it would count those trips twice.
+  const totalVehicleKilometres = (c: Car) => num(c.odometer_km);
   const decliningBalanceValue = (c: Car, days: number) => {
     const purchase = num(c.purchase_price),
       residual = Math.min(purchase, num(c.residual_value)),
@@ -122,6 +162,25 @@ export function useLedgerCalculations({
   const daysInMonth = (monthKeyValue: string) => {
     const [year, monthNumber] = monthKeyValue.split("-").map(Number);
     return new Date(year, monthNumber, 0).getDate();
+  };
+  const monthKeysBetween = (startMonth: string, endMonth: string) => {
+    const keys: string[] = [];
+    let year = Number(startMonth.slice(0, 4));
+    let monthNumber = Number(startMonth.slice(5, 7));
+    const endYear = Number(endMonth.slice(0, 4));
+    const endMonthNumber = Number(endMonth.slice(5, 7));
+    while (
+      year < endYear ||
+      (year === endYear && monthNumber <= endMonthNumber)
+    ) {
+      keys.push(`${year}-${String(monthNumber).padStart(2, "0")}`);
+      monthNumber += 1;
+      if (monthNumber > 12) {
+        monthNumber = 1;
+        year += 1;
+      }
+    }
+    return keys;
   };
   const rentalDaysInMonth = (r: Rental, monthKeyValue: string) => {
     const [year, monthNumber] = monthKeyValue.split("-").map(Number);
@@ -244,6 +303,13 @@ export function useLedgerCalculations({
           expense.treatment === "loan_principal"),
     );
   };
+  const isManualPrincipalEntry = (expense: Expense) =>
+    isManualFinanceRecord(expense) &&
+    (expense.category.toLowerCase().includes("principal") ||
+      expense.treatment === "loan_principal");
+  const isManualInterestEntry = (expense: Expense) =>
+    isManualFinanceRecord(expense) &&
+    expense.category.toLowerCase().includes("interest");
   const hasManualFinanceForCarMonth = (c: Car, monthKeyValue: string) =>
     expenses.some(
       (expense) =>
@@ -279,6 +345,61 @@ export function useLedgerCalculations({
       0,
     );
   const isManualFinanceEntry = isManualFinanceRecord;
+  const automaticLoanBreakdownForMonth = (c: Car, monthKeyValue: string) =>
+    hasManualFinanceForCarMonth(c, monthKeyValue)
+      ? { payment: 0, principal: 0, interest: 0 }
+      : loanBreakdownForMonth(c, monthKeyValue);
+  const allTimeStartMonth =
+    cars
+      .map((c) => c.loan_start_date || c.purchase_date)
+      .filter(Boolean)
+      .map((date) => monthKey(date as string))
+      .sort()[0] || allTimeEndMonth;
+  const allTimeMonths = monthKeysBetween(allTimeStartMonth, allTimeEndMonth);
+  const automaticInsuranceThroughToday = cars.reduce(
+    (sum, c) =>
+      sum +
+        monthKeysBetween(
+        monthKey(c.purchase_date || allTimeEndMonth + "-01"),
+        allTimeEndMonth,
+      ).reduce((total, key) => total + insuranceCostForMonth(c, key) * allTimeMonthFactor(key), 0),
+    0,
+  );
+  const automaticFinanceThroughToday = allTimeMonths.reduce(
+    (sum, key) => sum + automaticFinanceForMonth(key) * allTimeMonthFactor(key),
+    0,
+  );
+  const automaticPrincipalThroughToday = allTimeMonths.reduce(
+    (sum, key) => sum + automaticPrincipalForMonth(key) * allTimeMonthFactor(key),
+    0,
+  );
+  const automaticInterestThroughToday = allTimeMonths.reduce(
+    (sum, key) => sum + automaticInterestForMonth(key) * allTimeMonthFactor(key),
+    0,
+  );
+  const automaticLoanBreakdownThroughToday = (c: Car) =>
+    monthKeysBetween(
+      monthKey(c.loan_start_date || allTimeEndMonth + "-01"),
+      allTimeEndMonth,
+    ).reduce(
+      (total, key) => {
+        const part = hasManualFinanceForCarMonth(c, key)
+          ? { payment: 0, principal: 0, interest: 0 }
+          : loanBreakdownForMonth(c, key);
+        const factor = allTimeMonthFactor(key);
+        return {
+          payment: total.payment + part.payment * factor,
+          principal: total.principal + part.principal * factor,
+          interest: total.interest + part.interest * factor,
+        };
+      },
+      { payment: 0, principal: 0, interest: 0 },
+    );
+  const insuranceCostThroughToday = (c: Car) =>
+    monthKeysBetween(
+      monthKey(c.purchase_date || allTimeEndMonth + "-01"),
+      allTimeEndMonth,
+    ).reduce((sum, key) => sum + insuranceCostForMonth(c, key) * allTimeMonthFactor(key), 0);
   const depreciationDescription = (c: Car) =>
     c.depreciation_model === "declining_balance"
       ? `${Math.round(num(c.annual_decline_rate) * 100)}% annual declining balance`
@@ -340,32 +461,34 @@ export function useLedgerCalculations({
   );
   const automaticInsurance =
     month === "all"
-      ? 0
+      ? automaticInsuranceThroughToday
       : cars.reduce((sum, c) => sum + insuranceCostForMonth(c, month), 0);
   const automaticFinance =
     month === "all"
-      ? cars.reduce(
-          (sum, c) =>
-            sum + loanBreakdownThroughMonth(c, today().slice(0, 7)).payment,
-          0,
-        )
+      ? automaticFinanceThroughToday
       : automaticFinanceForMonth(month);
   const automaticPrincipal =
     month === "all"
-      ? cars.reduce(
-          (sum, c) =>
-            sum + loanBreakdownThroughMonth(c, today().slice(0, 7)).principal,
-          0,
-        )
+      ? automaticPrincipalThroughToday
       : automaticPrincipalForMonth(month);
   const automaticInterest =
     month === "all"
-      ? cars.reduce(
-          (sum, c) =>
-            sum + loanBreakdownThroughMonth(c, today().slice(0, 7)).interest,
-          0,
-        )
+      ? automaticInterestThroughToday
       : automaticInterestForMonth(month);
+  const manualFinancePrincipal = expenses
+    .filter(
+      (e) =>
+        isManualPrincipalEntry(e) &&
+        (month === "all" || expenseAppliesToMonth(e, month)),
+    )
+    .reduce((s, e) => s + expenseAmountForPeriod(e, calculationPeriod), 0);
+  const manualFinanceInterest = expenses
+    .filter(
+      (e) =>
+        isManualInterestEntry(e) &&
+        (month === "all" || expenseAppliesToMonth(e, month)),
+    )
+    .reduce((s, e) => s + expenseAmountForPeriod(e, calculationPeriod), 0);
   const monthExpenses = expenses
     .filter(
       (e) =>
@@ -378,8 +501,11 @@ export function useLedgerCalculations({
         ),
     )
     .reduce(
-      (s, e) => s + expenseAmountForPeriod(e, month),
-      automaticInsurance + platformCosts + automaticInterest,
+      (s, e) => s + expenseAmountForPeriod(e, calculationPeriod),
+      automaticInsurance +
+        platformCosts +
+        automaticInterest +
+        manualFinanceInterest,
     );
   const otherCashExpenses = expenses
     .filter(
@@ -391,14 +517,14 @@ export function useLedgerCalculations({
           insuranceConfigured(e.vehicle_identification)
         ),
     )
-    .reduce((s, e) => s + expenseAmountForPeriod(e, month), 0);
+    .reduce((s, e) => s + expenseAmountForPeriod(e, calculationPeriod), 0);
   const manualFinance = expenses
     .filter(
       (e) =>
         isManualFinanceEntry(e) &&
         (month === "all" || expenseAppliesToMonth(e, month)),
     )
-    .reduce((s, e) => s + expenseAmountForPeriod(e, month), 0);
+    .reduce((s, e) => s + expenseAmountForPeriod(e, calculationPeriod), 0);
   const cashExpenses =
     automaticInsurance +
     automaticFinance +
@@ -417,7 +543,10 @@ export function useLedgerCalculations({
         e.treatment === "loan_principal" &&
         !isManualFinanceEntry(e),
     )
-    .reduce((s, e) => s + expenseAmountForPeriod(e, month), automaticPrincipal);
+    .reduce(
+      (s, e) => s + expenseAmountForPeriod(e, calculationPeriod),
+      automaticPrincipal + manualFinancePrincipal,
+    );
   const monthKm = monthRentals.reduce((s, r) => s + rentalDistance(r), 0);
   const rentalDays = monthRentals.reduce(
     (s, r) => s + dateDiff(r.start_date, r.end_date),
@@ -478,8 +607,11 @@ export function useLedgerCalculations({
   const cashFlow = completedRevenue - cashExpenses;
   const chartData = useMemo(() => {
     const allDates = [
-      ...rentals.map((r) => r.end_date),
-      ...expenses.map((e) => e.date),
+      ...cars.map((c) => c.purchase_date).filter(Boolean),
+      ...rentals.flatMap((r) => [r.start_date, r.end_date]),
+      ...expenses
+        .filter((e) => !e.recurring_monthly)
+        .map((e) => e.date),
       today(),
     ].sort();
     const start =
@@ -553,6 +685,7 @@ export function useLedgerCalculations({
   );
   return {
     carName,
+    rentalGrossRevenue,
     rentalRevenue,
     rentalTuroAdjustments,
     rentalEarnings,
@@ -574,7 +707,12 @@ export function useLedgerCalculations({
     automaticFinanceForMonth,
     automaticPrincipalForMonth,
     automaticInterestForMonth,
+    automaticLoanBreakdownForMonth,
+    automaticLoanBreakdownThroughToday,
+    insuranceCostThroughToday,
     isManualFinanceEntry,
+    isManualPrincipalEntry,
+    isManualInterestEntry,
     depreciationDescription,
     expensesFor,
     carExpenses,

@@ -42,6 +42,8 @@ type PageContext = {
 export function OverviewPage({ context }: { context: PageContext }) {
   const {
     month,
+    allTimeBasis,
+    setAllTimeBasis,
     monthRentals,
     chartData,
     setCalculationDetails,
@@ -123,19 +125,39 @@ export function OverviewPage({ context }: { context: PageContext }) {
           <h2>At a glance</h2>
           <p>Track revenue, spending and vehicle economics.</p>
         </div>
-        <select value={month} onChange={(e) => setMonth(e.target.value)}>
-          <option value={today().slice(0, 7)}>This month</option>
-          <option
-            value={new Date(Date.now() - 86400000 * 30)
-              .toISOString()
-              .slice(0, 7)}
-          >
-            Previous month
-          </option>
-          <option value="all">All time</option>
-        </select>
+        <div className="period-controls">
+          <select value={month} onChange={(e) => setMonth(e.target.value)}>
+            <option value={today().slice(0, 7)}>This month</option>
+            <option
+              value={new Date(Date.now() - 86400000 * 30)
+                .toISOString()
+                .slice(0, 7)}
+            >
+              Previous month
+            </option>
+            <option value="all">All time</option>
+          </select>
+          {month === "all" && (
+            <select
+              aria-label="All-time expense period"
+              value={allTimeBasis}
+              onChange={(event) =>
+                setAllTimeBasis(
+                  event.target.value as "full-month" | "through-today",
+                )
+              }
+            >
+              <option value="full-month">Include full current month</option>
+              <option value="through-today">Through today (prorated)</option>
+            </select>
+          )}
+        </div>
       </div>
       <div className="metrics">
+        <div className="metric-section-heading">
+          <strong>Profit & loss</strong>
+          <span>Revenue and costs used to estimate profitability</span>
+        </div>
         <Metric
           label="Booked rental revenue"
           value={money(revenue)}
@@ -199,6 +221,10 @@ export function OverviewPage({ context }: { context: PageContext }) {
             })
           }
         />
+        <div className="metric-section-heading">
+          <strong>Cash flow costs</strong>
+          <span>Recorded cash outflows, including loan principal</span>
+        </div>
         <Metric
           label="Cash expenses (including principal)"
           value={money(cashExpenses)}
@@ -232,6 +258,10 @@ export function OverviewPage({ context }: { context: PageContext }) {
             })
           }
         />
+        <div className="metric-section-heading">
+          <strong>Booking performance</strong>
+          <span>Revenue, distance, and rental-day averages</span>
+        </div>
         <Metric
           label="Average rental revenue"
           value={money(averageRentalRevenue)}
@@ -307,10 +337,14 @@ export function OverviewPage({ context }: { context: PageContext }) {
             })
           }
         />
+        <div className="metric-section-heading">
+          <strong>Operating result and cash remaining</strong>
+          <span>Operating profit excludes loan principal; cash flow includes payments</span>
+        </div>
         <Metric
-          label="Operating profit"
+          label="Operating profit (before depreciation)"
           value={money(operatingProfit)}
-          hint="Revenue − operating costs"
+          hint={`${revenue > 0 ? ((operatingProfit / revenue) * 100).toFixed(1) : "0.0"}% of booked revenue; before depreciation and principal`}
           icon={<ChartNoAxesCombined />}
           tone={operatingProfit >= 0 ? "blue" : "red"}
           onInfo={() =>
@@ -327,7 +361,7 @@ export function OverviewPage({ context }: { context: PageContext }) {
           }
         />
         <Metric
-          label="Cash profit before principal"
+          label="Cash remaining before loan principal"
           value={money(cashProfitBeforePrincipal)}
           hint="Completed income − cash operating costs"
           icon={<Wallet />}
@@ -347,9 +381,9 @@ export function OverviewPage({ context }: { context: PageContext }) {
           }
         />
         <Metric
-          label="Net income (estimated)"
+          label="Estimated net income (after depreciation)"
           value={money(profit)}
-          hint="After estimated depreciation"
+          hint={`${revenue > 0 ? ((profit / revenue) * 100).toFixed(1) : "0.0"}% of booked revenue after estimated depreciation`}
           icon={<ChartNoAxesCombined />}
           tone={profit >= 0 ? "blue" : "red"}
           onInfo={() =>
@@ -366,9 +400,9 @@ export function OverviewPage({ context }: { context: PageContext }) {
           }
         />
         <Metric
-          label="Cash flow (completed income)"
+          label="Cash flow after loan payments"
           value={money(cashFlow)}
-          hint={`Completed income − cash expenses; depreciation excluded; includes ${money(principal)} loan principal`}
+          hint={`${completedRevenue > 0 ? ((cashFlow / completedRevenue) * 100).toFixed(1) : "0.0"}% cash margin; includes ${money(principal)} loan principal`}
           icon={<Activity />}
           tone={cashFlow >= 0 ? "purple" : "red"}
           onInfo={() =>

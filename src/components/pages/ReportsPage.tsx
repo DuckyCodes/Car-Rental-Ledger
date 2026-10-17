@@ -1,4 +1,6 @@
 import { Metric, Empty } from "../Ui";
+import { DailyRateTester } from "../reports/DailyRateTester";
+import { VehicleReportTable } from "../reports/VehicleReportTable";
 import {
   Activity,
   ArrowDownToLine,
@@ -25,7 +27,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { today, money, num, dateDiff, monthKey, API } from "../../model";
+import { money, monthKey } from "../../model";
 import type { Car, Rental, Expense, Valuation } from "../../model";
 
 type PageContext = {
@@ -42,6 +44,8 @@ type PageContext = {
 export function ReportsPage({ context }: { context: PageContext }) {
   const {
     month,
+    allTimeBasis,
+    setAllTimeBasis,
     monthRentals,
     chartData,
     setCalculationDetails,
@@ -58,13 +62,9 @@ export function ReportsPage({ context }: { context: PageContext }) {
     depreciationCar,
     depreciationChartData,
     setDepreciationCarIdentification,
-    money,
-    num,
-    today,
     rentalRevenue,
     rentalDistance,
     rentalDepreciation,
-    expensesFor,
     rentalPlatformCosts,
     search,
     setSearch,
@@ -79,7 +79,6 @@ export function ReportsPage({ context }: { context: PageContext }) {
     setModal,
     save,
     refresh,
-    API,
     revenue,
     completedRevenue,
     monthExpenses,
@@ -99,12 +98,15 @@ export function ReportsPage({ context }: { context: PageContext }) {
     averageBookingLength,
     revenuePerKilometre,
     rentalDays,
-    loanBreakdownForMonth,
-    loanBreakdownThroughMonth,
+    automaticLoanBreakdownForMonth,
+    automaticLoanBreakdownThroughToday,
     expenseAppliesToMonth,
     expenseAmountForPeriod,
     isManualFinanceEntry,
+    isManualPrincipalEntry,
+    isManualInterestEntry,
     insuranceCostForMonth,
+    insuranceCostThroughToday,
     insuranceConfigured,
     totalVehicleKilometres,
     depreciationDescription,
@@ -117,6 +119,10 @@ export function ReportsPage({ context }: { context: PageContext }) {
   }) => setCalculationDetails(details);
 
   const bookingCount = monthRentals.length;
+  const calculationPeriod =
+    month === "all" && allTimeBasis === "through-today"
+      ? "all-through-today"
+      : month;
   const distanceBookingCount = monthRentals.filter(
     (r) => rentalDistance(r) > 0,
   ).length;
@@ -133,24 +139,44 @@ export function ReportsPage({ context }: { context: PageContext }) {
             used to estimate profit.
           </p>
         </div>
-        <select value={month} onChange={(e) => setMonth(e.target.value)}>
-          <option value="all">All time</option>
-          {Array.from(
-            new Set([
-              ...expenses.map((e) => monthKey(e.date)),
-              ...rentals.map((r) => monthKey(r.start_date)),
-            ]),
-          )
-            .sort()
-            .reverse()
-            .map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
-        </select>
+        <div className="period-controls">
+          <select value={month} onChange={(e) => setMonth(e.target.value)}>
+            <option value="all">All time</option>
+            {Array.from(
+              new Set([
+                ...expenses.map((e) => monthKey(e.date)),
+                ...rentals.map((r) => monthKey(r.start_date)),
+              ]),
+            )
+              .sort()
+              .reverse()
+              .map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+          </select>
+          {month === "all" && (
+            <select
+              aria-label="All-time expense period"
+              value={allTimeBasis}
+              onChange={(event) =>
+                setAllTimeBasis(
+                  event.target.value as "full-month" | "through-today",
+                )
+              }
+            >
+              <option value="full-month">Include full current month</option>
+              <option value="through-today">Through today (prorated)</option>
+            </select>
+          )}
+        </div>
       </div>
       <div className="metrics">
+        <div className="metric-section-heading">
+          <strong>Revenue and profitability</strong>
+          <span>Income and operating results for the selected period</span>
+        </div>
         <Metric
           label="Rental revenue"
           value={money(revenue)}
@@ -192,6 +218,10 @@ export function ReportsPage({ context }: { context: PageContext }) {
             })
           }
         />
+        <div className="metric-section-heading">
+          <strong>Cash flow costs</strong>
+          <span>Actual cash expenses, including loan principal</span>
+        </div>
         <Metric
           label="Cash outflow"
           value={money(cashExpenses)}
@@ -229,6 +259,10 @@ export function ReportsPage({ context }: { context: PageContext }) {
             })
           }
         />
+        <div className="metric-section-heading">
+          <strong>Booking performance</strong>
+          <span>Revenue, distance, and rental-day averages</span>
+        </div>
         <Metric
           label="Average rental revenue"
           value={money(averageRentalRevenue)}
@@ -349,10 +383,14 @@ export function ReportsPage({ context }: { context: PageContext }) {
             })
           }
         />
+        <div className="metric-section-heading">
+          <strong>Operating result and cash remaining</strong>
+          <span>Operating profit excludes loan principal; cash flow includes payments</span>
+        </div>
         <Metric
-          label="Operating profit"
+          label="Operating profit (before depreciation)"
           value={money(operatingProfit)}
-          hint="Revenue − operating costs"
+          hint={`${revenue > 0 ? ((operatingProfit / revenue) * 100).toFixed(1) : "0.0"}% of booked revenue; before depreciation and principal`}
           icon={<ChartNoAxesCombined />}
           tone={operatingProfit >= 0 ? "blue" : "red"}
           onInfo={() =>
@@ -370,7 +408,7 @@ export function ReportsPage({ context }: { context: PageContext }) {
           }
         />
         <Metric
-          label="Cash profit before principal"
+          label="Cash remaining before loan principal"
           value={money(cashProfitBeforePrincipal)}
           hint="Completed income − cash operating costs"
           icon={<Wallet />}
@@ -391,9 +429,9 @@ export function ReportsPage({ context }: { context: PageContext }) {
           }
         />
         <Metric
-          label="Net income (estimated)"
+          label="Estimated net income (after depreciation)"
           value={money(profit)}
-          hint="Revenue − non-principal costs − depreciation"
+          hint={`${revenue > 0 ? ((profit / revenue) * 100).toFixed(1) : "0.0"}% of booked revenue after estimated depreciation`}
           icon={<ChartNoAxesCombined />}
           tone={profit >= 0 ? "blue" : "red"}
           onInfo={() =>
@@ -406,6 +444,27 @@ export function ReportsPage({ context }: { context: PageContext }) {
                 { label: "Operating profit", value: money(operatingProfit) },
                 { label: "Estimated depreciation", value: money(estimatedDep) },
                 { label: "Estimated net income", value: money(profit) },
+              ],
+            })
+          }
+        />
+        <Metric
+          label="Cash flow after loan payments"
+          value={money(cashFlow)}
+          hint={`${completedRevenue > 0 ? ((cashFlow / completedRevenue) * 100).toFixed(1) : "0.0"}% of completed rental income; includes principal`}
+          icon={<Activity />}
+          tone={cashFlow >= 0 ? "purple" : "red"}
+          onInfo={() =>
+            showCalculation({
+              title: "Cash flow after loan payments",
+              definition:
+                "Completed rental income remaining after recorded cash expenses, including loan principal. This is the closest report figure to cash left before owner withdrawals and unrecorded costs.",
+              formula: "Completed rental income − cash expenses",
+              items: [
+                { label: "Completed rental income", value: money(completedRevenue) },
+                { label: "Cash expenses, including principal", value: money(cashExpenses) },
+                { label: "Cash flow", value: money(cashFlow) },
+                { label: "Cash margin on completed income", value: `${completedRevenue > 0 ? ((cashFlow / completedRevenue) * 100).toFixed(1) : "0.0"}%` },
               ],
             })
           }
@@ -431,94 +490,44 @@ export function ReportsPage({ context }: { context: PageContext }) {
           }
         />
       </div>
-      <div className="panel report-panel">
-        <h3>By vehicle</h3>
-        <p>
-          Rental revenue and linked operating expenses for the selected period.
-        </p>
-        <table>
-          <thead>
-            <tr>
-              <th>Vehicle</th>
-              <th>Rental revenue</th>
-              <th>Operating costs</th>
-              <th>Loan principal</th>
-              <th>Total vehicle km</th>
-              <th>Estimated depreciation</th>
-              <th>Estimated profit</th>
-            </tr>
-          </thead>
-          <tbody>
-            {cars.map((c) => {
-              const rs = monthRentals.filter(
-                (r) => r.vehicle_identification === c.identification,
-              );
-              const rev = rs.reduce((s, r) => s + rentalRevenue(r), 0);
-              const es = expenses.filter(
-                (e) =>
-                  e.vehicle_identification === c.identification &&
-                  (month === "all" || expenseAppliesToMonth(e, month)),
-              );
-              const vehicleLoan =
-                month === "all"
-                  ? loanBreakdownThroughMonth(c, today().slice(0, 7))
-                  : loanBreakdownForMonth(c, month);
-              const vehiclePlatformCosts = rs.reduce(
-                (s, r) => s + rentalPlatformCosts(r),
-                0,
-              );
-              const vehicleInsurance =
-                month === "all" ? 0 : insuranceCostForMonth(c, month);
-              const op = es
-                .filter(
-                  (e) =>
-                    e.treatment !== "loan_principal" &&
-                    !isManualFinanceEntry(e) &&
-                    !(
-                      e.category.startsWith("Insurance") &&
-                      insuranceConfigured(e.vehicle_identification)
-                    ),
-                )
-                .reduce(
-                  (s, e) => s + expenseAmountForPeriod(e, month),
-                  vehicleLoan.interest +
-                    vehiclePlatformCosts +
-                    vehicleInsurance,
-                );
-              const prin = es
-                .filter(
-                  (e) =>
-                    e.treatment === "loan_principal" &&
-                    !isManualFinanceEntry(e),
-                )
-                .reduce(
-                  (s, e) => s + expenseAmountForPeriod(e, month),
-                  vehicleLoan.principal,
-                );
-              const km = totalVehicleKilometres(c);
-              const dep =
-                month === "all" && c.depreciation_model === "mileage"
-                  ? km * num(c.depreciation_per_km)
-                  : rs.reduce((s, r) => s + rentalDepreciation(r), 0);
-              return (
-                <tr key={c.identification}>
-                  <td>
-                    <strong>{c.name}</strong>
-                  </td>
-                  <td>{money(rev)}</td>
-                  <td>{money(op)}</td>
-                  <td>{money(prin)}</td>
-                  <td>{km.toLocaleString()}</td>
-                  <td>{money(dep)}</td>
-                  <td className={rev - op - dep >= 0 ? "positive" : "negative"}>
-                    {money(rev - op - dep)}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      <VehicleReportTable
+        cars={cars}
+        rentals={monthRentals}
+        expenses={expenses}
+        month={month}
+        calculationPeriod={calculationPeriod}
+        rentalRevenue={rentalRevenue}
+        rentalDistance={context.rentalDistance}
+        rentalDepreciation={rentalDepreciation}
+        rentalPlatformCosts={rentalPlatformCosts}
+        totalVehicleKilometres={totalVehicleKilometres}
+        expenseAppliesToMonth={expenseAppliesToMonth}
+        expenseAmountForPeriod={expenseAmountForPeriod}
+        isManualFinanceEntry={isManualFinanceEntry}
+        isManualPrincipalEntry={isManualPrincipalEntry}
+        isManualInterestEntry={isManualInterestEntry}
+        insuranceCostForMonth={insuranceCostForMonth}
+        insuranceCostThroughToday={insuranceCostThroughToday}
+        insuranceConfigured={insuranceConfigured}
+        automaticLoanBreakdownForMonth={automaticLoanBreakdownForMonth}
+        automaticLoanBreakdownThroughToday={automaticLoanBreakdownThroughToday}
+        showCalculation={showCalculation}
+      />
+      <DailyRateTester
+        cars={cars}
+        rentals={rentals}
+        expenses={expenses}
+        rentalGrossRevenue={context.rentalGrossRevenue}
+        rentalRevenue={rentalRevenue}
+        rentalDistance={context.rentalDistance}
+        insuranceCostForMonth={insuranceCostForMonth}
+        insuranceConfigured={insuranceConfigured}
+        isManualFinanceEntry={isManualFinanceEntry}
+        isManualInterestEntry={isManualInterestEntry}
+        automaticInterestForMonth={(car, monthKeyValue) =>
+          automaticLoanBreakdownForMonth(car, monthKeyValue).interest
+        }
+      />
       <div className="note-box report-note">
         <Wrench size={16} />
         <span>
