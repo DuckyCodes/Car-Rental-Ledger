@@ -50,6 +50,7 @@ export function RentalForm({
           turo_goods_services_tax: num(d.turo_goods_services_tax),
           on_trip_charging_fee: num(d.on_trip_charging_fee),
           post_trip_charging_fee: num(d.post_trip_charging_fee),
+          ticket_fee: num(d.ticket_fee),
           other_platform_fee: num(d.other_platform_fee),
           damage_fee: num(d.damage_fee),
           admin_fee: num(d.admin_fee),
@@ -165,15 +166,21 @@ export function RentalForm({
         </>
       )}
       {d.booking_source === "Direct" && (
-        <Field label="Total direct rental income (CAD; overrides daily income)">
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            value={d.direct_total_income}
-            onChange={(e) => set("direct_total_income", e.target.value)}
-          />
-        </Field>
+        <>
+          <div className="field wide"><div className="section-divider">Private rental details</div></div>
+          <Field label="Total direct rental income (CAD; overrides daily income)">
+            <input type="number" min="0" step="0.01" value={d.direct_total_income} onChange={(e) => set("direct_total_income", e.target.value)} />
+          </Field>
+          <Field label="On-trip charging fee (CAD; deducted from deposit)">
+            <input type="number" min="0" step="0.01" value={d.on_trip_charging_fee} onChange={(e) => set("on_trip_charging_fee", e.target.value)} />
+          </Field>
+          <Field label="Post-trip charging fee (CAD; deducted from deposit)">
+            <input type="number" min="0" step="0.01" value={d.post_trip_charging_fee} onChange={(e) => set("post_trip_charging_fee", e.target.value)} />
+          </Field>
+          <Field label="Tickets (CAD; deducted from deposit)">
+            <input type="number" min="0" step="0.01" value={d.ticket_fee} onChange={(e) => set("ticket_fee", e.target.value)} />
+          </Field>
+        </>
       )}
       <Field label="Renter / booking name">
         <input

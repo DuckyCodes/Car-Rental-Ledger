@@ -40,7 +40,7 @@ npm run dev
 - JSON export and restore for records
 
 ## Calculation notes / assumptions
-- Rental revenue = Turo gross trip income when provided, otherwise daily rental income × number of rental calendar days (inclusive) + extra-km charges + additional extra-km income + damage fees + admin fees + cleaning fees + other vehicle income. Turo fee, GST, provincial tax, discount, and charging reimbursement fields are retained for reference only and are excluded from totals because they are already included in gross income. Security deposits are tracked separately and are not treated as revenue unless retained.
+- Rental revenue = Turo gross trip income when provided, otherwise daily rental income × number of rental calendar days (inclusive) + extra-km charges + additional extra-km income. Damage, cleaning, and other vehicle income fields are reference-only for private rentals. Retained security deposits are included as revenue, with charging reimbursements and tickets deducted from the retained deposit first because they are pass-through amounts.
 - The damage/scratch/admin fees field is a simple vehicle-linked income bucket; use the separate extra-km charge field for mileage charges.
 - Rental distance = end odometer − start odometer, floored at zero.
 - Rental-level mileage depreciation estimate = rental km × that vehicle's depreciation-per-km assumption. Total vehicle mileage depreciation uses total vehicle km, including recorded rental km, for a conservative estimate.

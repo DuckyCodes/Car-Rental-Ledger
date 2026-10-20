@@ -52,13 +52,21 @@ export function useLedgerCalculations({
     const directIncome = directBaseIncome + num(r.extra_km_revenue);
     if (num(r.turo_gross_income) > 0) return num(r.turo_gross_income);
     const turoIncome = directIncome;
-    const otherVehicleIncome =
-      r.booking_source === "Turo" ? 0 : num(r.other_revenue);
+    const otherVehicleIncome = r.booking_source === "Turo" ? 0 : num(r.other_revenue);
+    // A retained security deposit is income only to the extent it is not
+    // being used to reimburse charging fees. Charging reimbursements are
+    // pass-through amounts, so they must not inflate trip profitability.
+    const retainedDepositIncome = Math.max(
+      0,
+      num(r.deposit_collected) -
+        num(r.deposit_returned) -
+        num(r.on_trip_charging_fee) -
+        num(r.post_trip_charging_fee) -
+        (r.booking_source === "Turo" ? 0 : num(r.ticket_fee)),
+    );
     return (
       turoIncome +
-      num(r.damage_fee) +
-      num(r.cleaning_fee) +
-      otherVehicleIncome +
+      retainedDepositIncome +
       Math.max(
         0,
         num(r.end_km) -

@@ -43,6 +43,7 @@ export type Rental = {
   turo_goods_services_tax: number;
   on_trip_charging_fee: number;
   post_trip_charging_fee: number;
+  ticket_fee: number;
   other_platform_fee: number;
   damage_fee: number;
   admin_fee: number;
@@ -141,6 +142,7 @@ export const blankRental = {
   turo_goods_services_tax: 0,
   on_trip_charging_fee: 0,
   post_trip_charging_fee: 0,
+  ticket_fee: 0,
   other_platform_fee: 0,
   damage_fee: 0,
   admin_fee: 0,

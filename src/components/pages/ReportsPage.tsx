@@ -524,8 +524,8 @@ export function ReportsPage({ context }: { context: PageContext }) {
         insuranceConfigured={insuranceConfigured}
         isManualFinanceEntry={isManualFinanceEntry}
         isManualInterestEntry={isManualInterestEntry}
-        automaticInterestForMonth={(car, monthKeyValue) =>
-          automaticLoanBreakdownForMonth(car, monthKeyValue).interest
+        automaticFinanceForMonth={(car, monthKeyValue) =>
+          automaticLoanBreakdownForMonth(car, monthKeyValue)
         }
       />
       <div className="note-box report-note">
