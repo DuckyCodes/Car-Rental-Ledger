@@ -44,6 +44,9 @@ export type Rental = {
   on_trip_charging_fee: number;
   post_trip_charging_fee: number;
   ticket_fee: number;
+  late_fee: number;
+  add_on_fee: number;
+  drop_off_fee: number;
   other_platform_fee: number;
   damage_fee: number;
   admin_fee: number;
@@ -143,6 +146,9 @@ export const blankRental = {
   on_trip_charging_fee: 0,
   post_trip_charging_fee: 0,
   ticket_fee: 0,
+  late_fee: 0,
+  add_on_fee: 0,
+  drop_off_fee: 0,
   other_platform_fee: 0,
   damage_fee: 0,
   admin_fee: 0,

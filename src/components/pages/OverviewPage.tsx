@@ -109,6 +109,7 @@ export function OverviewPage({ context }: { context: PageContext }) {
     insuranceCostForMonth,
     insuranceConfigured,
     totalVehicleKilometres,
+    totalDepreciation,
     depreciationDescription,
   } = context;
   const showCalculation = (details: {
@@ -284,6 +285,21 @@ export function OverviewPage({ context }: { context: PageContext }) {
                 },
                 { label: "Average", value: money(averageRentalRevenue) },
               ],
+            })
+          }
+        />
+        <Metric
+          label="Total rental days"
+          value={`${rentalDays}`}
+          hint="Days vehicles were rented"
+          icon={<Wallet />}
+          tone="blue"
+          onInfo={() =>
+            showCalculation({
+              title: "Total rental days",
+              definition: "Total calendar days covered by the selected rental bookings.",
+              formula: "Sum of rental days across selected bookings",
+              items: [{ label: "Rental days", value: `${rentalDays}` }],
             })
           }
         />
@@ -679,8 +695,7 @@ export function OverviewPage({ context }: { context: PageContext }) {
                 </div>
                 <strong>
                   {money(
-                    num(depreciationCar.purchase_price) -
-                      num(depreciationCar.current_value),
+                    totalDepreciation(depreciationCar),
                   )}{" "}
                   estimated decline
                 </strong>

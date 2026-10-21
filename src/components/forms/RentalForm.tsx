@@ -24,6 +24,19 @@ export function RentalForm({
 }) {
   const [d, setD] = useState({ ...blankRental, ...initial });
   const set = (k: string, v: any) => setD((p: any) => ({ ...p, [k]: v }));
+  const directDepositDeductions =
+    num(d.on_trip_charging_fee) +
+    num(d.post_trip_charging_fee) +
+    num(d.ticket_fee) +
+    num(d.late_fee) +
+    num(d.add_on_fee) +
+    num(d.drop_off_fee) +
+    num(d.damage_fee) +
+    num(d.admin_fee);
+  const depositToReturn = Math.max(
+    0,
+    num(d.deposit_collected) - directDepositDeductions,
+  );
   return (
     <form
       className="form-grid"
@@ -51,13 +64,16 @@ export function RentalForm({
           on_trip_charging_fee: num(d.on_trip_charging_fee),
           post_trip_charging_fee: num(d.post_trip_charging_fee),
           ticket_fee: num(d.ticket_fee),
+          late_fee: num(d.late_fee),
+          add_on_fee: num(d.add_on_fee),
+          drop_off_fee: num(d.drop_off_fee),
           other_platform_fee: num(d.other_platform_fee),
           damage_fee: num(d.damage_fee),
           admin_fee: num(d.admin_fee),
           cleaning_fee: num(d.cleaning_fee),
           other_revenue: num(d.other_revenue),
           deposit_collected: num(d.deposit_collected),
-          deposit_returned: num(d.deposit_returned),
+          deposit_returned: depositToReturn,
         });
       }}
     >
@@ -167,10 +183,11 @@ export function RentalForm({
       )}
       {d.booking_source === "Direct" && (
         <>
-          <div className="field wide"><div className="section-divider">Private rental details</div></div>
+          <div className="field wide"><div className="section-divider">Direct rental income</div></div>
           <Field label="Total direct rental income (CAD; overrides daily income)">
             <input type="number" min="0" step="0.01" value={d.direct_total_income} onChange={(e) => set("direct_total_income", e.target.value)} />
           </Field>
+          <div className="field wide"><div className="section-divider">Pass-through reimbursements (excluded from profit)</div></div>
           <Field label="On-trip charging fee (CAD; deducted from deposit)">
             <input type="number" min="0" step="0.01" value={d.on_trip_charging_fee} onChange={(e) => set("on_trip_charging_fee", e.target.value)} />
           </Field>
@@ -179,6 +196,16 @@ export function RentalForm({
           </Field>
           <Field label="Tickets (CAD; deducted from deposit)">
             <input type="number" min="0" step="0.01" value={d.ticket_fee} onChange={(e) => set("ticket_fee", e.target.value)} />
+          </Field>
+          <div className="field wide"><div className="section-divider">Income-producing fees (deducted from deposit and included in profit)</div></div>
+          <Field label="Late fee (CAD; deducted from deposit)">
+            <input type="number" min="0" step="0.01" value={d.late_fee} onChange={(e) => set("late_fee", e.target.value)} />
+          </Field>
+          <Field label="Add-on fee (CAD; deducted from deposit)">
+            <input type="number" min="0" step="0.01" value={d.add_on_fee} onChange={(e) => set("add_on_fee", e.target.value)} />
+          </Field>
+          <Field label="Drop-off fee (CAD; deducted from deposit)">
+            <input type="number" min="0" step="0.01" value={d.drop_off_fee} onChange={(e) => set("drop_off_fee", e.target.value)} />
           </Field>
         </>
       )}
@@ -250,7 +277,8 @@ export function RentalForm({
           onChange={(e) => set("other_revenue", e.target.value)}
         />
       </Field>
-      <Field label="Damage / scratch fees (CAD)">
+      <div className="field wide"><div className="section-divider">Additional income-producing fees</div></div>
+      <Field label="Damage / scratch fees (CAD; deducted from deposit and included in totals)">
         <input
           type="number"
           min="0"
@@ -259,7 +287,7 @@ export function RentalForm({
           onChange={(e) => set("damage_fee", e.target.value)}
         />
       </Field>
-      <Field label="Admin fee (reference only; excluded from totals)">
+      <Field label="Admin fee (CAD; deducted from deposit and included in totals)">
         <input
           type="number"
           min="0"
@@ -286,13 +314,11 @@ export function RentalForm({
           onChange={(e) => set("deposit_collected", e.target.value)}
         />
       </Field>
-      <Field label="Security deposit returned (CAD)">
+      <Field label="Security deposit to return (CAD)">
         <input
-          type="number"
-          min="0"
-          step="0.01"
-          value={d.deposit_returned}
-          onChange={(e) => set("deposit_returned", e.target.value)}
+          type="text"
+          readOnly
+          value={depositToReturn.toFixed(2)}
         />
       </Field>
       <div className="field wide">

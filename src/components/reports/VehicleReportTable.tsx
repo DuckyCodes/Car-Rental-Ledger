@@ -1,4 +1,4 @@
-import { money, num } from "../../model";
+import { dateDiff, money, num } from "../../model";
 import type { Car, Expense, Rental } from "../../model";
 
 type CalculationDetails = {
@@ -72,6 +72,7 @@ export function VehicleReportTable({
             <th>Operating costs</th>
             <th>Loan principal</th>
             <th>Rental km (period)</th>
+            <th>Rental days</th>
             <th>Current odometer</th>
             <th>Estimated depreciation</th>
             <th>Estimated profit</th>
@@ -155,6 +156,10 @@ export function VehicleReportTable({
               (sum, rental) => sum + rentalDistance(rental),
               0,
             );
+            const rentalDays = carRentals.reduce(
+              (sum, rental) => sum + dateDiff(rental.start_date, rental.end_date),
+              0,
+            );
             const depreciation =
               month === "all" && car.depreciation_model === "mileage"
                 ? odometer * num(car.depreciation_per_km)
@@ -171,6 +176,7 @@ export function VehicleReportTable({
                 <td>{money(operatingCosts)}</td>
                 <td>{money(principal)}</td>
                 <td>{rentalKm.toLocaleString()}</td>
+                <td>{rentalDays.toLocaleString()}</td>
                 <td>{odometer.toLocaleString()}</td>
                 <td>{money(depreciation)}</td>
                 <td className={estimatedProfit >= 0 ? "positive" : "negative"}>

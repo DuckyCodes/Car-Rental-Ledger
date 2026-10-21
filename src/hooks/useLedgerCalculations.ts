@@ -56,13 +56,15 @@ export function useLedgerCalculations({
     // A retained security deposit is income only to the extent it is not
     // being used to reimburse charging fees. Charging reimbursements are
     // pass-through amounts, so they must not inflate trip profitability.
+    const depositReimbursements =
+      num(r.on_trip_charging_fee) +
+      num(r.post_trip_charging_fee) +
+      (r.booking_source === "Turo" ? 0 : num(r.ticket_fee));
     const retainedDepositIncome = Math.max(
       0,
       num(r.deposit_collected) -
         num(r.deposit_returned) -
-        num(r.on_trip_charging_fee) -
-        num(r.post_trip_charging_fee) -
-        (r.booking_source === "Turo" ? 0 : num(r.ticket_fee)),
+        depositReimbursements,
     );
     return (
       turoIncome +
@@ -137,6 +139,8 @@ export function useLedgerCalculations({
   // The vehicle odometer is already the vehicle's cumulative distance.
   // Adding rental km to it would count those trips twice.
   const totalVehicleKilometres = (c: Car) => num(c.odometer_km);
+  const totalDepreciation = (c: Car) =>
+    Math.max(0, num(c.purchase_price) - num(c.current_value));
   const decliningBalanceValue = (c: Car, days: number) => {
     const purchase = num(c.purchase_price),
       residual = Math.min(purchase, num(c.residual_value)),
@@ -703,6 +707,7 @@ export function useLedgerCalculations({
     expenseAmountForPeriod,
     rentalDistance,
     totalVehicleKilometres,
+    totalDepreciation,
     decliningBalanceValue,
     rentalDepreciation,
     daysInMonth,

@@ -284,6 +284,21 @@ export function ReportsPage({ context }: { context: PageContext }) {
           }
         />
         <Metric
+          label="Total rental days"
+          value={`${rentalDays}`}
+          hint="Days vehicles were rented"
+          icon={<Wallet />}
+          tone="blue"
+          onInfo={() =>
+            showCalculation({
+              title: "Total rental days",
+              definition: "Total calendar days covered by the selected rental bookings.",
+              formula: "Sum of rental days across selected bookings",
+              items: [{ label: "Rental days", value: `${rentalDays}` }],
+            })
+          }
+        />
+        <Metric
           label="Average kilometres"
           value={`${Math.round(averageKilometres).toLocaleString()} km`}
           hint="Per booking"
