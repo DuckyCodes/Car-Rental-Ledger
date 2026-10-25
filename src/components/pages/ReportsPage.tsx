@@ -140,6 +140,7 @@ export function ReportsPage({ context }: { context: PageContext }) {
           </p>
         </div>
         <div className="period-controls">
+          <button className="secondary" onClick={() => setTab("Hypotheticals")}>Open hypotheticals</button>
           <select value={month} onChange={(e) => setMonth(e.target.value)}>
             <option value="all">All time</option>
             {Array.from(

@@ -6,6 +6,7 @@ import {
   Receipt,
   Settings2,
   Wallet,
+  FlaskConical,
 } from "lucide-react";
 import type { Tab } from "../model";
 
@@ -22,6 +23,7 @@ const navigation = [
   ["Rentals", Wallet, "Bookings"],
   ["Expenses", Receipt, "Transactions"],
   ["Valuations", Gauge, "Depreciation"],
+  ["Hypotheticals", FlaskConical, "Hypotheticals"],
   ["Reports", ChartNoAxesCombined, "Reports"],
 ] as const;
 

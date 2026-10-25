@@ -83,7 +83,8 @@ export type Tab =
   | "Rentals"
   | "Expenses"
   | "Valuations"
-  | "Reports";
+  | "Reports"
+  | "Hypotheticals";
 export const API = "/api";
 export const today = () => new Date().toISOString().slice(0, 10);
 export const money = (n: number) =>

@@ -39,6 +39,7 @@ import { RentalsPage } from "./components/pages/RentalsPage";
 import { ExpensesPage } from "./components/pages/ExpensesPage";
 import { ValuationsPage } from "./components/pages/ValuationsPage";
 import { ReportsPage } from "./components/pages/ReportsPage";
+import { HypotheticalsPage } from "./components/pages/HypotheticalsPage";
 import { AppSidebar } from "./components/AppSidebar";
 import {
   CarForm,
@@ -307,6 +308,7 @@ function App() {
     totalDepreciation,
     rentalDepreciation,
     expensesFor,
+    carExpenses,
     rentalPlatformCosts,
     search,
     setSearch,
@@ -387,7 +389,9 @@ function App() {
                       ? "Expense ledger"
                       : tab === "Valuations"
                         ? "Vehicle valuations"
-                        : "Reports & analysis"}
+                        : tab === "Hypotheticals"
+                          ? "Rental hypotheticals"
+                          : "Reports & analysis"}
             </h1>
           </div>
           <div className="top-actions">
@@ -442,6 +446,7 @@ function App() {
               {tab === "Expenses" && <ExpensesPage context={pageContext} />}
               {tab === "Valuations" && <ValuationsPage context={pageContext} />}
               {tab === "Reports" && <ReportsPage context={pageContext} />}
+              {tab === "Hypotheticals" && <HypotheticalsPage context={pageContext} />}
             </>
           )}
         </div>

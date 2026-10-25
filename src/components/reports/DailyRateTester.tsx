@@ -183,7 +183,7 @@ export function DailyRateTester({
       <div className="rate-tester-fields">
         <label className="field">
           <span>Target margin (%)</span>
-          <input
+          <input onFocus={(event) => event.currentTarget.select()}
             type="number"
             min="0"
             max="99"
@@ -194,7 +194,7 @@ export function DailyRateTester({
         </label>
         <label className="field">
           <span>Turo deductions (% of gross)</span>
-          <input
+          <input onFocus={(event) => event.currentTarget.select()}
             type="number"
             min="0"
             max="99"
@@ -205,7 +205,7 @@ export function DailyRateTester({
         </label>
         <label className="field">
           <span>Operating costs per month (excl. finance)</span>
-          <input
+          <input onFocus={(event) => event.currentTarget.select()}
             type="number"
             min="0"
             step="10"
@@ -215,7 +215,7 @@ export function DailyRateTester({
         </label>
         <label className="field">
           <span>Finance payments per month</span>
-          <input
+          <input onFocus={(event) => event.currentTarget.select()}
             type="number"
             min="0"
             step="10"
@@ -225,7 +225,7 @@ export function DailyRateTester({
         </label>
         <label className="field">
           <span>Rental days per month</span>
-          <input
+          <input onFocus={(event) => event.currentTarget.select()}
             type="number"
             min="1"
             max="30"
@@ -236,7 +236,7 @@ export function DailyRateTester({
         </label>
         <label className="field">
           <span>Expected km per rental day</span>
-          <input
+          <input onFocus={(event) => event.currentTarget.select()}
             type="number"
             min="0"
             step="10"
@@ -246,7 +246,7 @@ export function DailyRateTester({
         </label>
         <label className="field">
           <span>Depreciation per km</span>
-          <input
+          <input onFocus={(event) => event.currentTarget.select()}
             type="number"
             min="0"
             step="0.01"
@@ -256,7 +256,7 @@ export function DailyRateTester({
         </label>
         <label className="field">
           <span>Daily rate to test</span>
-          <input
+          <input onFocus={(event) => event.currentTarget.select()}
             type="number"
             min="0"
             step="1"
