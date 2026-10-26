@@ -1,4 +1,4 @@
-# Car Rental Ledger
+# Car Rental Ledger — Self-Hosted Vehicle Rental Management
 
 Vehicle rentals, expenses, receipts, and profitability in one app. Self-hosted on a machine you own.
 
