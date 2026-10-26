@@ -561,7 +561,11 @@ export function useLedgerCalculations({
     );
   const monthKm = monthRentals.reduce((s, r) => s + rentalDistance(r), 0);
   const rentalDays = monthRentals.reduce(
-    (s, r) => s + dateDiff(r.start_date, r.end_date),
+    (s, r) =>
+      s +
+      (month === "all"
+        ? dateDiff(r.start_date, r.end_date)
+        : rentalDaysInMonth(r, month)),
     0,
   );
   const distanceTrackedRentals = monthRentals.filter(

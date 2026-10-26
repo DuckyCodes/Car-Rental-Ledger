@@ -130,11 +130,15 @@ export function ReportsPage({ context }: { context: PageContext }) {
   ).length;
   const operatingMargin = revenue > 0 ? (operatingProfit / revenue) * 100 : 0;
   const cashFlowMargin = completedRevenue > 0 ? (cashFlow / completedRevenue) * 100 : 0;
-  const completedRentalDays = monthRentals
-    .filter((rental) => rental.end_date <= new Date().toISOString().slice(0, 10))
-    .reduce((total, rental) => total + Math.max(1, Math.floor((new Date(`${rental.end_date}T12:00:00`).getTime() - new Date(`${rental.start_date}T12:00:00`).getTime()) / 86400000)), 0);
   const periodStart = month === "all" ? monthRentals.map((r) => r.start_date).sort()[0] || new Date().toISOString().slice(0, 10) : `${month}-01`;
   const periodEnd = month === "all" ? new Date().toISOString().slice(0, 10) : new Date(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0).toISOString().slice(0, 10);
+  const completedRentalDays = monthRentals
+    .filter((rental) => rental.end_date <= periodEnd)
+    .reduce((total, rental) => {
+      const start = rental.start_date > periodStart ? rental.start_date : periodStart;
+      const end = rental.end_date < periodEnd ? rental.end_date : periodEnd;
+      return total + Math.max(0, Math.floor((new Date(`${end}T12:00:00`).getTime() - new Date(`${start}T12:00:00`).getTime()) / 86400000));
+    }, 0);
   const periodDays = Math.max(1, Math.floor((new Date(`${periodEnd}T12:00:00`).getTime() - new Date(`${periodStart}T12:00:00`).getTime()) / 86400000) + 1);
   const bookedDaysPercentage = cars.length ? (rentalDays / (periodDays * cars.length)) * 100 : 0;
   const availableMonths = Array.from(

@@ -121,10 +121,6 @@ export function OverviewPage({ context }: { context: PageContext }) {
   const completedRentals = monthRentals.filter((r) => r.end_date <= today());
   const operatingMargin = revenue > 0 ? (operatingProfit / revenue) * 100 : 0;
   const cashFlowMargin = completedRevenue > 0 ? (cashFlow / completedRevenue) * 100 : 0;
-  const completedRentalDays = completedRentals.reduce(
-    (total, rental) => total + dateDiff(rental.start_date, rental.end_date),
-    0,
-  );
   const periodStart =
     month === "all"
       ? monthRentals.map((r) => r.start_date).sort()[0] || today()
@@ -135,6 +131,25 @@ export function OverviewPage({ context }: { context: PageContext }) {
       : new Date(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0)
           .toISOString()
           .slice(0, 10);
+  const completedRentalDays = completedRentals.reduce(
+    (total, rental) =>
+      total +
+      (month === "all"
+        ? dateDiff(rental.start_date, rental.end_date)
+        : Math.max(
+            0,
+            Math.floor(
+              (new Date(
+                `${rental.end_date < periodEnd ? rental.end_date : periodEnd}T12:00:00`,
+              ).getTime() -
+                new Date(
+                  `${rental.start_date > periodStart ? rental.start_date : periodStart}T12:00:00`,
+                ).getTime()) /
+                86400000,
+            ),
+          )),
+    0,
+  );
   const periodDays = Math.max(
     1,
     Math.floor(
