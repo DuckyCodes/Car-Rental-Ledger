@@ -33,7 +33,7 @@ export function AppSidebar({ tab, setTab, expensesCount, openData }: Props) {
       <div className="brand">
         <div className="brand-icon"><CarFront size={23} /></div>
         <div>
-          <strong>Rental Ledger</strong>
+          <strong>Car Rental Ledger</strong>
           <span>LOCAL FINANCE TRACKER</span>
         </div>
       </div>

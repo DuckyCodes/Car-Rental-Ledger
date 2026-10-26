@@ -455,7 +455,7 @@ function App() {
             <span className="status-dot" /> Running locally · data stored in
             SQLite
           </span>
-          <span>Rental Ledger v1.0 · CAD</span>
+          <span>Car Rental Ledger v1.0 · CAD</span>
         </footer>
       </main>
       {modal && (

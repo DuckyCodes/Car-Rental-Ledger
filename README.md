@@ -1,12 +1,12 @@
-# Rental Ledger
+# Car Rental Ledger
 
 Vehicle rentals, expenses, receipts, and profitability in one app. Self-hosted on a machine you own.
 
 [Developers](#developers) · [Features](#features) · [Data and privacy](#data-and-privacy) · [License](#license)
 
-![Rental Ledger dashboard](docs/images/dashboard.png)
+![Car Rental Ledger dashboard](docs/images/dashboard.png)
 
-Rental Ledger is a local-first rental fleet management app for vehicle owners and small rental operators. Record a booking, add the related expenses, and see revenue, cash flow, estimated profit, and depreciation in one place.
+Car Rental Ledger is a local-first rental fleet management app for vehicle owners and small rental operators. Record a booking, add the related expenses, and see revenue, cash flow, estimated profit, and depreciation in one place.
 
 Everything runs on your own computer. Your vehicle records, rental history, and receipts stay in a local SQLite database instead of being sent to somebody else's cloud.
 
@@ -93,7 +93,7 @@ npm start         # Start the production API and bundled frontend
 
 ## 🔒 Data and privacy
 
-Rental Ledger is designed to keep application data local:
+Car Rental Ledger is designed to keep application data local:
 
 - Database: `data/rental-ledger.sqlite`
 - SQLite journal files: `data/rental-ledger.sqlite-shm` and `data/rental-ledger.sqlite-wal`
@@ -123,6 +123,12 @@ Issues, bug reports, documentation improvements, and pull requests are welcome. 
 2. Run `npm run build`.
 3. Describe the user-facing change and any calculation changes clearly.
 
+## ❤️ Support the project
+
+If this project helped you, saved you time, or inspired you, consider supporting its future growth and maintenance. You can show your support by starring the repository, sharing the project, or via GitHub Sponsors, PayPal, Liberapay, or Buy Me a Coffee.
+
+Open-source software requires time, effort, and resources to maintain. Your support helps keep this project alive, up-to-date, and accessible to everyone. Every contribution, big or small, makes a difference and motivates continued work on features, bug fixes, and new ideas.
+
 ## 📄 License
 
-No license has been selected for this repository yet. Add a `LICENSE` file before publishing if you want to define how others may use, modify, and redistribute the project.
+Car Rental Ledger is open source under the [MIT License](LICENSE). You may use, modify, and redistribute it, including in commercial projects, provided that the license and copyright notice are preserved.
