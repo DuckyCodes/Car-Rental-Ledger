@@ -3,3 +3,23 @@ dist/
 data/
 *.log
 .DS_Store
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Local databases, backups, and uploaded receipts
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.db
+*.backup
+backups/
+receipts/
+
+# Editor and operating-system metadata
+.vscode/
+.idea/
+*.swp
+Thumbs.db

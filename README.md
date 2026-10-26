@@ -1,65 +1,128 @@
-# Rental Ledger — local rental fleet expense tracker
+# Rental Ledger
 
-A local-first manual-entry app for tracking multiple rental vehicles, rental bookings, expenses and receipts, market valuations, depreciation estimates, monthly cash flow, and rental-level profitability.
+Vehicle rentals, expenses, receipts, and profitability in one app. Self-hosted on a machine you own.
 
-## Requirements
+[Developers](#developers) · [Features](#features) · [Data and privacy](#data-and-privacy) · [License](#license)
+
+![Rental Ledger dashboard](docs/images/dashboard.png)
+
+Rental Ledger is a local-first rental fleet management app for vehicle owners and small rental operators. Record a booking, add the related expenses, and see revenue, cash flow, estimated profit, and depreciation in one place.
+
+Everything runs on your own computer. Your vehicle records, rental history, and receipts stay in a local SQLite database instead of being sent to somebody else's cloud.
+
+## ✨ Features
+
+- **Vehicles:** track purchase values, odometers, market valuations, loans, insurance, and depreciation assumptions.
+- **Bookings:** record direct and Turo rentals, dates, rates, included kilometres, extra mileage, deposits, and add-ons.
+- **Expenses:** organize operating costs, finance payments, capital items, recurring monthly expenses, and vehicle-linked costs.
+- **Receipts:** upload PDF, JPG, PNG, and WEBP receipts and link them to expenses.
+- **Dashboard:** review revenue, operating costs, estimated profit, cash flow, depreciation, and booking performance.
+- **Reports:** inspect vehicle economics, rental profitability, daily rates, expenses, and valuation history.
+- **Backups:** export and restore records as JSON; export expenses as CSV.
+- **Self-hosted:** run the frontend, API, and SQLite database locally with no account, cloud sync, or third-party API keys.
+
+## 🚀 Getting started
+
+### Requirements
+
 - Node.js 20 or newer (Node 22 LTS recommended)
 - npm
 
-## Start on Windows
-1. Extract this folder somewhere convenient.
-2. Open PowerShell in the `rental-ledger` folder.
-3. Run `npm install` (first time only).
-4. Run `npm run dev`.
-5. Open **http://127.0.0.1:5173** in your browser.
+### Windows
 
-The frontend runs on port 5173 and the local Express API/database runs on port 8787. Keep the terminal open while using the app. Stop it with Ctrl+C.
+Open PowerShell in the project directory and run:
 
-## Start on macOS / Linux
-Same commands in Terminal:
+```powershell
+npm install
+npm run dev
+```
+
+Or double-click `start.bat`.
+
+### macOS and Linux
+
 ```bash
 npm install
 npm run dev
 ```
 
-## Where data lives
-- SQLite database: `data/rental-ledger.sqlite`
-- Receipt files: `data/receipts/`
-- Keep both in backups. The app's **Data & backups** screen exports a JSON record backup; receipt files need to be copied separately from `data/receipts`.
+Then open the frontend at:
 
-## Features
-- Multiple vehicle records with mileage-based or age-based declining-balance depreciation assumptions
-- Rental records with dates, daily rate, included km, extra-km rate, odometer start/end and other revenue
-- Direct and Turo booking inputs, including discounts, Turo fees, on-trip charging, and other platform fees
-- Expenses linked to a vehicle and optionally a specific rental
-- Receipt uploads (PDF, JPG, PNG, WEBP; max 10 MB each)
-- Distinguishes operating costs, loan principal cash outflows, and capital items
-- Dashboard for revenue, costs, estimated profit and cash flow
-- Expense filtering and CSV export
-- Market valuation history and odometer snapshots
-- JSON export and restore for records
+<http://127.0.0.1:5173>
 
-## Calculation notes / assumptions
-- Rental revenue = Turo gross trip income when provided, otherwise daily rental income × number of rental calendar days (inclusive) + extra-km charges + additional extra-km income. Damage, cleaning, and other vehicle income fields are reference-only for private rentals. Retained security deposits are included as revenue, with charging reimbursements and tickets deducted from the retained deposit first because they are pass-through amounts.
-- The damage/scratch/admin fees field is a simple vehicle-linked income bucket; use the separate extra-km charge field for mileage charges.
-- Rental distance = end odometer − start odometer, floored at zero.
-- Rental-level mileage depreciation estimate = rental km × that vehicle's depreciation-per-km assumption. Total vehicle mileage depreciation uses total vehicle km, including recorded rental km, for a conservative estimate.
-- Declining-balance depreciation estimate = the vehicle's value at the start of the rental minus its value at the end, using the annual decline rate, purchase date, purchase price, and residual value. This is allocated by rental days and is intended as a management estimate.
-- Estimated profit = rental revenue − recorded expenses except loan principal − estimated mileage depreciation. This is a management estimate and does not allocate all fixed monthly costs to individual rentals. For rental-level results, link relevant expenses to the rental.
-- Cash flow = rental revenue − all recorded cash expenses, including loan principal.
-- Expenses can be marked as recurring monthly expenses; recurring insurance, finance, registration, storage, and similar costs are included in each later monthly bottom-line calculation.
-- Insurance can be configured per vehicle as a personal monthly baseline plus a commercial daily rate. On rental days, the commercial daily rate replaces the personal daily share; it is not added on top, preventing double counting.
-- Turo fee, tax, discount, and charging reimbursement fields are not added to operating costs or deducted from gross trip income; they are reference-only fields.
-- Financing: the full loan payment affects cash flow. Principal is not an operating expense in the dashboard's profit estimate; record interest separately as an operating expense.
-- Capital items are kept separate from operating costs but are not currently depreciated as accounting capital assets. Market valuation entries are tracked separately and do not automatically override the selected depreciation model.
-- Dashboard monthly rental revenue groups bookings by start month in the six-month trend; the selected-period overview includes rentals overlapping the selected month. Treat the reports as management estimates, not tax advice or a formal accounting statement.
+The development server starts:
 
-## Local privacy
-The server binds to `127.0.0.1`, so it is intended for use on this computer and is not exposed to your local network. No login or cloud sync is included. Protect your Windows/macOS account and backups, and do not delete the `data` folder if you want to preserve your records.
+- Vite frontend on port `5173`
+- Local Express API on port `8787`
 
-## Build production bundle
+The server binds to `127.0.0.1`, so it is not exposed to your local network by default.
+
+### Production mode
+
 ```bash
 npm run build
 npm start
 ```
-Then open `http://127.0.0.1:8787`.
+
+Open <http://127.0.0.1:8787>.
+
+To use another API port, set `PORT`:
+
+```bash
+PORT=9000 npm start
+```
+
+## 🛠️ Developers
+
+The main project areas are:
+
+```text
+src/              React frontend and calculation logic
+server/           Express API and SQLite setup
+docs/images/      README screenshots
+data/             Local database and uploaded receipts
+```
+
+Useful commands:
+
+```bash
+npm run dev       # Start the frontend and API together
+npm run build     # Type-check and build the production frontend
+npm start         # Start the production API and bundled frontend
+```
+
+## 🔒 Data and privacy
+
+Rental Ledger is designed to keep application data local:
+
+- Database: `data/rental-ledger.sqlite`
+- SQLite journal files: `data/rental-ledger.sqlite-shm` and `data/rental-ledger.sqlite-wal`
+- Uploaded receipts: `data/receipts/`
+
+These paths are excluded from Git. Keep the database and receipt directory together when making backups. The **Data & backups** screen exports JSON records, but receipt files must be copied separately.
+
+There is no login, encryption, cloud sync, or access control layer. Protect the computer and backups where the application is installed. Do not expose the API to the public internet without adding authentication and a properly configured reverse proxy.
+
+## 📊 Calculation notes
+
+- Rental revenue uses Turo gross trip income when provided; otherwise it uses daily rental income plus applicable mileage and additional income.
+- Rental distance is the end odometer minus the start odometer, floored at zero.
+- Mileage depreciation is estimated from rental kilometres and the vehicle's depreciation-per-kilometre assumption.
+- Declining-balance depreciation uses the annual decline rate, purchase date, purchase price, and residual value.
+- Estimated profit excludes loan principal and subtracts estimated depreciation. Cash flow includes all recorded cash expenses, including loan principal.
+- Recurring monthly expenses are included in later monthly calculations.
+- Commercial insurance replaces the personal daily insurance share on rental days; it is not added on top.
+- Turo fees, taxes, discounts, and charging reimbursements are retained as reference fields and are not automatically treated as operating costs.
+- Results are management estimates, not tax advice or formal accounting statements.
+
+## 🤝 Contributing
+
+Issues, bug reports, documentation improvements, and pull requests are welcome. Before opening a pull request:
+
+1. Keep personal databases, receipts, backups, and `.env` files out of commits.
+2. Run `npm run build`.
+3. Describe the user-facing change and any calculation changes clearly.
+
+## 📄 License
+
+No license has been selected for this repository yet. Add a `LICENSE` file before publishing if you want to define how others may use, modify, and redistribute the project.
