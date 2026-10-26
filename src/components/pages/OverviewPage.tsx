@@ -25,7 +25,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { today, money, num, dateDiff, monthKey, API } from "../../model";
+import { today, money, num, dateDiff, monthKey, monthsBetween, API } from "../../model";
 import type { Car, Rental, Expense, Valuation } from "../../model";
 
 type PageContext = {
@@ -119,6 +119,39 @@ export function OverviewPage({ context }: { context: PageContext }) {
     items: { label: string; value: string }[];
   }) => setCalculationDetails(details);
   const completedRentals = monthRentals.filter((r) => r.end_date <= today());
+  const operatingMargin = revenue > 0 ? (operatingProfit / revenue) * 100 : 0;
+  const cashFlowMargin = completedRevenue > 0 ? (cashFlow / completedRevenue) * 100 : 0;
+  const completedRentalDays = completedRentals.reduce(
+    (total, rental) => total + dateDiff(rental.start_date, rental.end_date),
+    0,
+  );
+  const periodStart =
+    month === "all"
+      ? monthRentals.map((r) => r.start_date).sort()[0] || today()
+      : `${month}-01`;
+  const periodEnd =
+    month === "all"
+      ? today()
+      : new Date(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0)
+          .toISOString()
+          .slice(0, 10);
+  const periodDays = Math.max(
+    1,
+    Math.floor(
+      (new Date(`${periodEnd}T12:00:00`).getTime() -
+        new Date(`${periodStart}T12:00:00`).getTime()) /
+        86400000,
+    ) + 1,
+  );
+  const bookedDaysPercentage = cars.length
+    ? (rentalDays / (periodDays * cars.length)) * 100
+    : 0;
+  const availableMonths = Array.from(
+    new Set([
+      ...expenses.map((expense) => monthKey(expense.date)),
+      ...rentals.flatMap((rental) => monthsBetween(rental.start_date, rental.end_date)),
+    ]),
+  ).sort().reverse();
   return (
     <>
       <div className="toolbar">
@@ -136,6 +169,11 @@ export function OverviewPage({ context }: { context: PageContext }) {
             >
               Previous month
             </option>
+            {availableMonths.map((availableMonth) => (
+              <option key={availableMonth} value={availableMonth}>
+                {availableMonth}
+              </option>
+            ))}
             <option value="all">All time</option>
           </select>
           {month === "all" && (
@@ -199,6 +237,8 @@ export function OverviewPage({ context }: { context: PageContext }) {
                   value: money(rentalRevenue(r)),
                 })),
                 { label: "Completed income", value: money(completedRevenue) },
+                { label: "Completed rental days", value: `${completedRentalDays}` },
+                { label: "Booked rental days", value: `${bookedDaysPercentage.toFixed(1)}% of fleet capacity` },
               ],
             })
           }
@@ -304,6 +344,25 @@ export function OverviewPage({ context }: { context: PageContext }) {
           }
         />
         <Metric
+          label="Booked rental days"
+          value={`${bookedDaysPercentage.toFixed(1)}%`}
+          hint={`${rentalDays} of ${periodDays * cars.length} available fleet days`}
+          icon={<Gauge />}
+          tone="purple"
+          onInfo={() =>
+            showCalculation({
+              title: "Booked rental days",
+              definition: "The share of available vehicle-days covered by bookings in the selected period.",
+              formula: "Booked rental days ÷ (period days × vehicles) × 100",
+              items: [
+                { label: "Booked rental days", value: `${rentalDays}` },
+                { label: "Available fleet days", value: `${periodDays * cars.length}` },
+                { label: "Booked rental days", value: `${bookedDaysPercentage.toFixed(1)}%` },
+              ],
+            })
+          }
+        />
+        <Metric
           label="Average kilometres"
           value={`${Math.round(averageKilometres).toLocaleString()} km`}
           hint="Per booking"
@@ -377,6 +436,25 @@ export function OverviewPage({ context }: { context: PageContext }) {
           }
         />
         <Metric
+          label="Operating margin"
+          value={`${operatingMargin.toFixed(1)}%`}
+          hint="Operating profit as a share of booked revenue"
+          icon={<ChartNoAxesCombined />}
+          tone={operatingMargin >= 0 ? "blue" : "red"}
+          onInfo={() =>
+            showCalculation({
+              title: "Operating margin",
+              definition: "Estimated operating profit as a percentage of booked rental revenue, before depreciation and loan principal.",
+              formula: "Operating profit ÷ booked rental revenue × 100",
+              items: [
+                { label: "Operating profit", value: money(operatingProfit) },
+                { label: "Booked revenue", value: money(revenue) },
+                { label: "Operating margin", value: `${operatingMargin.toFixed(1)}%` },
+              ],
+            })
+          }
+        />
+        <Metric
           label="Cash remaining before loan principal"
           value={money(cashProfitBeforePrincipal)}
           hint="Completed income − cash operating costs"
@@ -431,6 +509,25 @@ export function OverviewPage({ context }: { context: PageContext }) {
                 { label: "Cash expenses", value: money(cashExpenses) },
                 { label: "Cash flow", value: money(cashFlow) },
                 { label: "Loan principal included", value: money(principal) },
+              ],
+            })
+          }
+        />
+        <Metric
+          label="Cash-flow margin"
+          value={`${cashFlowMargin.toFixed(1)}%`}
+          hint="Cash flow as a share of completed income"
+          icon={<Activity />}
+          tone={cashFlowMargin >= 0 ? "purple" : "red"}
+          onInfo={() =>
+            showCalculation({
+              title: "Cash-flow margin",
+              definition: "Cash remaining after all recorded cash expenses, including loan principal, as a percentage of completed rental income.",
+              formula: "Cash flow ÷ completed rental income × 100",
+              items: [
+                { label: "Cash flow", value: money(cashFlow) },
+                { label: "Completed income", value: money(completedRevenue) },
+                { label: "Cash-flow margin", value: `${cashFlowMargin.toFixed(1)}%` },
               ],
             })
           }

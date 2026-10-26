@@ -1,5 +1,4 @@
 import { Metric, Empty } from "../Ui";
-import { DailyRateTester } from "../reports/DailyRateTester";
 import { VehicleReportTable } from "../reports/VehicleReportTable";
 import {
   Activity,
@@ -27,7 +26,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { money, monthKey } from "../../model";
+import { money, monthKey, monthsBetween } from "../../model";
 import type { Car, Rental, Expense, Valuation } from "../../model";
 
 type PageContext = {
@@ -129,6 +128,21 @@ export function ReportsPage({ context }: { context: PageContext }) {
   const revenueBookingCount = monthRentals.filter(
     (r) => rentalRevenue(r) > 0,
   ).length;
+  const operatingMargin = revenue > 0 ? (operatingProfit / revenue) * 100 : 0;
+  const cashFlowMargin = completedRevenue > 0 ? (cashFlow / completedRevenue) * 100 : 0;
+  const completedRentalDays = monthRentals
+    .filter((rental) => rental.end_date <= new Date().toISOString().slice(0, 10))
+    .reduce((total, rental) => total + Math.max(1, Math.floor((new Date(`${rental.end_date}T12:00:00`).getTime() - new Date(`${rental.start_date}T12:00:00`).getTime()) / 86400000)), 0);
+  const periodStart = month === "all" ? monthRentals.map((r) => r.start_date).sort()[0] || new Date().toISOString().slice(0, 10) : `${month}-01`;
+  const periodEnd = month === "all" ? new Date().toISOString().slice(0, 10) : new Date(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0).toISOString().slice(0, 10);
+  const periodDays = Math.max(1, Math.floor((new Date(`${periodEnd}T12:00:00`).getTime() - new Date(`${periodStart}T12:00:00`).getTime()) / 86400000) + 1);
+  const bookedDaysPercentage = cars.length ? (rentalDays / (periodDays * cars.length)) * 100 : 0;
+  const availableMonths = Array.from(
+    new Set([
+      ...expenses.map((expense) => monthKey(expense.date)),
+      ...rentals.flatMap((rental) => monthsBetween(rental.start_date, rental.end_date)),
+    ]),
+  ).sort().reverse();
   return (
     <>
       <div className="toolbar">
@@ -143,15 +157,7 @@ export function ReportsPage({ context }: { context: PageContext }) {
           <button className="secondary" onClick={() => setTab("Hypotheticals")}>Open hypotheticals</button>
           <select value={month} onChange={(e) => setMonth(e.target.value)}>
             <option value="all">All time</option>
-            {Array.from(
-              new Set([
-                ...expenses.map((e) => monthKey(e.date)),
-                ...rentals.map((r) => monthKey(r.start_date)),
-              ]),
-            )
-              .sort()
-              .reverse()
-              .map((m) => (
+            {availableMonths.map((m) => (
                 <option key={m} value={m}>
                   {m}
                 </option>
@@ -215,6 +221,8 @@ export function ReportsPage({ context }: { context: PageContext }) {
                   value: `${context.completedMonthRentals?.length ?? 0}`,
                 },
                 { label: "Completed income", value: money(completedRevenue) },
+                { label: "Completed rental days", value: `${completedRentalDays}` },
+                { label: "Booked rental days", value: `${bookedDaysPercentage.toFixed(1)}% of fleet capacity` },
               ],
             })
           }
@@ -296,6 +304,25 @@ export function ReportsPage({ context }: { context: PageContext }) {
               definition: "Total calendar days covered by the selected rental bookings.",
               formula: "Sum of rental days across selected bookings",
               items: [{ label: "Rental days", value: `${rentalDays}` }],
+            })
+          }
+        />
+        <Metric
+          label="Booked rental days"
+          value={`${bookedDaysPercentage.toFixed(1)}%`}
+          hint={`${rentalDays} of ${periodDays * cars.length} available fleet days`}
+          icon={<Gauge />}
+          tone="purple"
+          onInfo={() =>
+            showCalculation({
+              title: "Booked rental days",
+              definition: "The share of available vehicle-days covered by bookings in the selected period.",
+              formula: "Booked rental days ÷ (period days × vehicles) × 100",
+              items: [
+                { label: "Booked rental days", value: `${rentalDays}` },
+                { label: "Available fleet days", value: `${periodDays * cars.length}` },
+                { label: "Booked rental days", value: `${bookedDaysPercentage.toFixed(1)}%` },
+              ],
             })
           }
         />
@@ -424,6 +451,25 @@ export function ReportsPage({ context }: { context: PageContext }) {
           }
         />
         <Metric
+          label="Operating margin"
+          value={`${operatingMargin.toFixed(1)}%`}
+          hint="Operating profit as a share of rental revenue"
+          icon={<ChartNoAxesCombined />}
+          tone={operatingMargin >= 0 ? "blue" : "red"}
+          onInfo={() =>
+            showCalculation({
+              title: "Operating margin",
+              definition: "Estimated operating profit as a percentage of rental revenue, before depreciation and loan principal.",
+              formula: "Operating profit ÷ rental revenue × 100",
+              items: [
+                { label: "Operating profit", value: money(operatingProfit) },
+                { label: "Rental revenue", value: money(revenue) },
+                { label: "Operating margin", value: `${operatingMargin.toFixed(1)}%` },
+              ],
+            })
+          }
+        />
+        <Metric
           label="Cash remaining before loan principal"
           value={money(cashProfitBeforePrincipal)}
           hint="Completed income − cash operating costs"
@@ -486,6 +532,25 @@ export function ReportsPage({ context }: { context: PageContext }) {
           }
         />
         <Metric
+          label="Cash-flow margin"
+          value={`${cashFlowMargin.toFixed(1)}%`}
+          hint="Cash flow as a share of completed income"
+          icon={<Activity />}
+          tone={cashFlowMargin >= 0 ? "purple" : "red"}
+          onInfo={() =>
+            showCalculation({
+              title: "Cash-flow margin",
+              definition: "Cash flow after recorded expenses, including loan principal, as a percentage of completed rental income.",
+              formula: "Cash flow ÷ completed rental income × 100",
+              items: [
+                { label: "Cash flow", value: money(cashFlow) },
+                { label: "Completed rental income", value: money(completedRevenue) },
+                { label: "Cash-flow margin", value: `${cashFlowMargin.toFixed(1)}%` },
+              ],
+            })
+          }
+        />
+        <Metric
           label="Distance recorded"
           value={`${monthKm.toLocaleString()} km`}
           hint={`Estimated depreciation ${money(estimatedDep)}`}
@@ -528,21 +593,6 @@ export function ReportsPage({ context }: { context: PageContext }) {
         automaticLoanBreakdownForMonth={automaticLoanBreakdownForMonth}
         automaticLoanBreakdownThroughToday={automaticLoanBreakdownThroughToday}
         showCalculation={showCalculation}
-      />
-      <DailyRateTester
-        cars={cars}
-        rentals={rentals}
-        expenses={expenses}
-        rentalGrossRevenue={context.rentalGrossRevenue}
-        rentalRevenue={rentalRevenue}
-        rentalDistance={context.rentalDistance}
-        insuranceCostForMonth={insuranceCostForMonth}
-        insuranceConfigured={insuranceConfigured}
-        isManualFinanceEntry={isManualFinanceEntry}
-        isManualInterestEntry={isManualInterestEntry}
-        automaticFinanceForMonth={(car, monthKeyValue) =>
-          automaticLoanBreakdownForMonth(car, monthKeyValue)
-        }
       />
       <div className="note-box report-note">
         <Wrench size={16} />

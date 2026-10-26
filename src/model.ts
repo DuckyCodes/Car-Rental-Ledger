@@ -104,6 +104,17 @@ export const dateDiff = (a: string, b: string) =>
     ),
   );
 export const monthKey = (s: string) => String(s || "").slice(0, 7);
+export const monthsBetween = (start: string, end: string) => {
+  const months: string[] = [];
+  const cursor = new Date(`${monthKey(start)}-01T12:00:00`);
+  const last = new Date(`${monthKey(end)}-01T12:00:00`);
+  if (Number.isNaN(cursor.getTime()) || Number.isNaN(last.getTime())) return months;
+  while (cursor <= last) {
+    months.push(`${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`);
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+  return months;
+};
 export const blankCar = {
   name: "",
   make_model: "Tesla Model Y",
