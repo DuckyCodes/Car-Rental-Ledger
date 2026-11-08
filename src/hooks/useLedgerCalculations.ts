@@ -90,6 +90,9 @@ export function useLedgerCalculations({
     Math.max(0, rentalGrossRevenue(r) - rentalTuroAdjustments(r));
   const rentalEarnings = (r: Rental) => rentalRevenue(r);
   const rentalPlatformCosts = (_r: Rental) => 0;
+  // A recurring expense applies once per month from its recorded start date
+  // through the selected month/current date.
+  const recurringExpenseStartDate = (expense: Expense) => expense.date;
   const expenseAppliesToMonth = (expense: Expense, monthKeyValue: string) => {
     const vehicle = cars.find(
       (c) => c.identification === expense.vehicle_identification,
@@ -98,12 +101,20 @@ export function useLedgerCalculations({
       ? monthKey(vehicle.purchase_date)
       : "";
     return (
-      monthKey(expense.date) === monthKeyValue ||
+      (!expense.recurring_monthly &&
+        monthKey(expense.date) === monthKeyValue) ||
       (Boolean(expense.recurring_monthly) &&
-        expense.date <= monthKeyValue + "-31" &&
+        recurringExpenseStartDate(expense) <= monthKeyValue + "-31" &&
         (!purchaseMonth || purchaseMonth <= monthKeyValue))
     );
   };
+  const financeExpenseAppliesToMonth = (
+    expense: Expense,
+    monthKeyValue: string,
+  ) =>
+    monthKey(expense.date) === monthKeyValue ||
+    (Boolean(expense.recurring_monthly) &&
+      expense.date <= monthKeyValue + "-31");
   const recurringMonthsThroughToday = (expense: Expense) => {
     const vehicle = cars.find(
       (c) => c.identification === expense.vehicle_identification,
@@ -111,7 +122,7 @@ export function useLedgerCalculations({
     const expenseStart =
       vehicle?.purchase_date && vehicle.purchase_date > expense.date
         ? vehicle.purchase_date
-        : expense.date;
+        : recurringExpenseStartDate(expense);
     const start = monthKey(expenseStart),
       end = today().slice(0, 7);
     if (start > end) return 0;
@@ -132,6 +143,10 @@ export function useLedgerCalculations({
     }
     return num(expense.amount);
   };
+  const expenseIncludedInPeriod = (expense: Expense, selectedMonth: string) =>
+    selectedMonth !== "all" ||
+    Boolean(expense.recurring_monthly) ||
+    expense.date <= today();
   const rentalDistance = (r: Rental) =>
     num(r.manually_entered_total_kilometres) > 0
       ? num(r.manually_entered_total_kilometres)
@@ -307,11 +322,14 @@ export function useLedgerCalculations({
     const c = cars.find(
       (vehicle) => vehicle.identification === expense.vehicle_identification,
     );
+    const category = expense.category.toLowerCase();
+    const isFinanceCategory =
+      category.includes("finance") || category.includes("loan");
     return Boolean(
       c &&
         loanConfigured(c) &&
         expense.date >= String(c.loan_start_date) &&
-        (expense.category.startsWith("Finance payment") ||
+        (isFinanceCategory ||
           expense.treatment === "loan_principal"),
     );
   };
@@ -327,7 +345,7 @@ export function useLedgerCalculations({
       (expense) =>
         isManualFinanceRecord(expense) &&
         expense.vehicle_identification === c.identification &&
-        expenseAppliesToMonth(expense, monthKeyValue),
+          financeExpenseAppliesToMonth(expense, monthKeyValue),
     );
   const automaticFinanceForMonth = (monthKeyValue: string) =>
     cars.reduce(
@@ -440,6 +458,7 @@ export function useLedgerCalculations({
       expenses
         .filter(
           (e) =>
+            expenseIncludedInPeriod(e, month) &&
             (month === "all" || expenseAppliesToMonth(e, month)) &&
             (carFilter === "all" ||
               String(e.vehicle_identification || "") === carFilter) &&
@@ -491,19 +510,22 @@ export function useLedgerCalculations({
     .filter(
       (e) =>
         isManualPrincipalEntry(e) &&
-        (month === "all" || expenseAppliesToMonth(e, month)),
+        expenseIncludedInPeriod(e, month) &&
+        (month === "all" || financeExpenseAppliesToMonth(e, month)),
     )
     .reduce((s, e) => s + expenseAmountForPeriod(e, calculationPeriod), 0);
   const manualFinanceInterest = expenses
     .filter(
       (e) =>
         isManualInterestEntry(e) &&
-        (month === "all" || expenseAppliesToMonth(e, month)),
+        expenseIncludedInPeriod(e, month) &&
+        (month === "all" || financeExpenseAppliesToMonth(e, month)),
     )
     .reduce((s, e) => s + expenseAmountForPeriod(e, calculationPeriod), 0);
   const monthExpenses = expenses
     .filter(
       (e) =>
+        expenseIncludedInPeriod(e, month) &&
         (month === "all" || expenseAppliesToMonth(e, month)) &&
         e.treatment !== "loan_principal" &&
         !isManualFinanceEntry(e) &&
@@ -522,6 +544,7 @@ export function useLedgerCalculations({
   const otherCashExpenses = expenses
     .filter(
       (e) =>
+        expenseIncludedInPeriod(e, month) &&
         (month === "all" || expenseAppliesToMonth(e, month)) &&
         !isManualFinanceEntry(e) &&
         !(
@@ -530,11 +553,31 @@ export function useLedgerCalculations({
         ),
     )
     .reduce((s, e) => s + expenseAmountForPeriod(e, calculationPeriod), 0);
+  const otherCashExpenseItems = expenses
+    .filter(
+      (e) =>
+        expenseIncludedInPeriod(e, month) &&
+        (month === "all" || expenseAppliesToMonth(e, month)) &&
+        !isManualFinanceEntry(e) &&
+        !(
+          e.category.startsWith("Insurance") &&
+          insuranceConfigured(e.vehicle_identification)
+        ),
+    )
+    .reduce((items, expense) => {
+      const label = expense.description.trim() || expense.category;
+      const amount = expenseAmountForPeriod(expense, calculationPeriod);
+      const existing = items.find((item) => item.label === label);
+      if (existing) existing.value += amount;
+      else items.push({ label, value: amount });
+      return items;
+    }, [] as { label: string; value: number }[]);
   const manualFinance = expenses
     .filter(
       (e) =>
         isManualFinanceEntry(e) &&
-        (month === "all" || expenseAppliesToMonth(e, month)),
+        expenseIncludedInPeriod(e, month) &&
+        (month === "all" || financeExpenseAppliesToMonth(e, month)),
     )
     .reduce((s, e) => s + expenseAmountForPeriod(e, calculationPeriod), 0);
   const cashExpenses =
@@ -547,10 +590,17 @@ export function useLedgerCalculations({
     insurance: automaticInsurance,
     finance: automaticFinance + manualFinance,
     other: otherCashExpenses + completedPlatformCosts,
+    otherItems: [
+      ...otherCashExpenseItems,
+      ...(completedPlatformCosts > 0
+        ? [{ label: "Platform costs", value: completedPlatformCosts }]
+        : []),
+    ],
   };
   const principal = expenses
     .filter(
       (e) =>
+        expenseIncludedInPeriod(e, month) &&
         (month === "all" || expenseAppliesToMonth(e, month)) &&
         e.treatment === "loan_principal" &&
         !isManualFinanceEntry(e),

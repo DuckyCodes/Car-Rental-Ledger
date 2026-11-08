@@ -302,8 +302,12 @@ export function OverviewPage({ context }: { context: PageContext }) {
                   label: "Finance payments",
                   value: money(cashExpenseBreakdown.finance),
                 },
+                ...cashExpenseBreakdown.otherItems.map((item: { label: string; value: number }) => ({
+                  label: item.label,
+                  value: money(item.value),
+                })),
                 {
-                  label: "Other cash expenses",
+                  label: "Other cash expenses total",
                   value: money(cashExpenseBreakdown.other),
                 },
                 {

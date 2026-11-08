@@ -266,7 +266,11 @@ export function ReportsPage({ context }: { context: PageContext }) {
               items: [
                 { label: "Insurance", value: money(cashExpenseBreakdown.insurance) },
                 { label: "Finance payments", value: money(cashExpenseBreakdown.finance) },
-                { label: "Other cash expenses", value: money(cashExpenseBreakdown.other) },
+                ...cashExpenseBreakdown.otherItems.map((item: { label: string; value: number }) => ({
+                  label: item.label,
+                  value: money(item.value),
+                })),
+                { label: "Other cash expenses total", value: money(cashExpenseBreakdown.other) },
                 { label: "Cash expenses total", value: money(cashExpenses) },
               ],
             })
