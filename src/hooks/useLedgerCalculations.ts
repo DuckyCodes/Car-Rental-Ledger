@@ -60,11 +60,20 @@ export function useLedgerCalculations({
       num(r.on_trip_charging_fee) +
       num(r.post_trip_charging_fee) +
       (r.booking_source === "Turo" ? 0 : num(r.ticket_fee));
+    const extraKmCharge =
+      Math.max(
+        0,
+        rentalDistance(r) -
+          num(r.included_km_per_day) * dateDiff(r.start_date, r.end_date),
+      ) *
+        num(r.extra_km_rate) +
+      num(r.extra_km_revenue);
     const retainedDepositIncome = Math.max(
       0,
       num(r.deposit_collected) -
         num(r.deposit_returned) -
-        depositReimbursements,
+        depositReimbursements -
+        extraKmCharge,
     );
     return (
       turoIncome +

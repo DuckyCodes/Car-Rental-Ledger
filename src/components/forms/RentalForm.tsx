@@ -24,6 +24,24 @@ export function RentalForm({
 }) {
   const [d, setD] = useState({ ...blankRental, ...initial });
   const set = (k: string, v: any) => setD((p: any) => ({ ...p, [k]: v }));
+  const rentalDays = Math.max(
+    1,
+    Math.floor(
+      (new Date(`${d.end_date}T12:00:00`).getTime() -
+        new Date(`${d.start_date}T12:00:00`).getTime()) /
+        86400000,
+    ),
+  );
+  const rentalKilometres =
+    num(d.manually_entered_total_kilometres) > 0
+      ? num(d.manually_entered_total_kilometres)
+      : Math.max(0, num(d.end_km) - num(d.start_km));
+  const automaticExtraKmCharge =
+    Math.max(
+      0,
+      rentalKilometres - num(d.included_km_per_day) * rentalDays,
+    ) * num(d.extra_km_rate);
+  const extraKmCharge = automaticExtraKmCharge + num(d.extra_km_revenue);
   const directDepositDeductions =
     num(d.on_trip_charging_fee) +
     num(d.post_trip_charging_fee) +
@@ -32,7 +50,8 @@ export function RentalForm({
     num(d.add_on_fee) +
     num(d.drop_off_fee) +
     num(d.damage_fee) +
-    num(d.admin_fee);
+    num(d.admin_fee) +
+    extraKmCharge;
   const depositToReturn = Math.max(
     0,
     num(d.deposit_collected) - directDepositDeductions,
