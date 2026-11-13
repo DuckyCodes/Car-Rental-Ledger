@@ -115,6 +115,8 @@ export function OverviewMetrics({ context }: { context: PageContext }) {
   const cashFlowMargin = revenue > 0 ? (cashFlow / revenue) * 100 : 0;
   const completedOperatingMargin = completedRevenue > 0 ? ((completedRevenue - monthExpenses) / completedRevenue) * 100 : 0;
   const completedCashFlowMargin = completedRevenue > 0 ? (((completedRevenue - cashExpenses) / completedRevenue) * 100) : 0;
+  const completedOperatingProfit = completedRevenue - monthExpenses;
+  const completedNetIncome = completedOperatingProfit - estimatedDep;
   const cashFlowDetails = cashFlowMetricDetails({ revenue, cashExpenses, cashFlow, principal });
   const { periodStart, periodEnd, completedRentalDays, periodDays } = getOverviewPeriod(month, monthRentals);
   const bookedDaysPercentage = cars.length
@@ -351,8 +353,8 @@ export function OverviewMetrics({ context }: { context: PageContext }) {
         </div>
         <Metric
           label="Booked operating profit (before depreciation)"
-          value={money(operatingProfit)}
-          hint={`${revenue > 0 ? ((operatingProfit / revenue) * 100).toFixed(1) : "0.0"}% of booked revenue; before depreciation and principal`}
+          value={money(completedOperatingProfit)}
+          hint={`${completedOperatingMargin.toFixed(1)}% of completed rental income; before depreciation and principal`}
           icon={<ChartNoAxesCombined />}
           tone={operatingProfit >= 0 ? "blue" : "red"}
           onInfo={() =>
@@ -409,8 +411,8 @@ export function OverviewMetrics({ context }: { context: PageContext }) {
         />
         <Metric
           label="Booked net income (after depreciation)"
-          value={money(profit)}
-          hint={`${revenue > 0 ? ((profit / revenue) * 100).toFixed(1) : "0.0"}% of booked revenue after estimated depreciation`}
+          value={money(completedNetIncome)}
+          hint={`${completedRevenue > 0 ? ((completedNetIncome / completedRevenue) * 100).toFixed(1) : "0.0"}% of completed rental income after estimated depreciation`}
           icon={<ChartNoAxesCombined />}
           tone={profit >= 0 ? "blue" : "red"}
           onInfo={() =>
