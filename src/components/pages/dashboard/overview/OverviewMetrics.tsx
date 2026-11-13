@@ -113,6 +113,8 @@ export function OverviewMetrics({ context }: { context: PageContext }) {
   const completedRentals = monthRentals.filter((r) => r.end_date <= today());
   const operatingMargin = revenue > 0 ? (operatingProfit / revenue) * 100 : 0;
   const cashFlowMargin = revenue > 0 ? (cashFlow / revenue) * 100 : 0;
+  const completedOperatingMargin = completedRevenue > 0 ? ((completedRevenue - monthExpenses) / completedRevenue) * 100 : 0;
+  const completedCashFlowMargin = completedRevenue > 0 ? (((completedRevenue - cashExpenses) / completedRevenue) * 100) : 0;
   const cashFlowDetails = cashFlowMetricDetails({ revenue, cashExpenses, cashFlow, principal });
   const { periodStart, periodEnd, completedRentalDays, periodDays } = getOverviewPeriod(month, monthRentals);
   const bookedDaysPercentage = cars.length
@@ -149,7 +151,7 @@ export function OverviewMetrics({ context }: { context: PageContext }) {
         <Metric
           label="Completed rental income"
           value={money(completedRevenue)}
-          hint="Completed bookings; revenue recognized"
+          hint={`${completedOperatingMargin.toFixed(1)}% operating margin · ${completedCashFlowMargin.toFixed(1)}% cash-flow margin`}
           icon={<CircleDollarSign />}
           tone="green"
           onInfo={() =>
