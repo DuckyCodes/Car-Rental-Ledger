@@ -111,7 +111,7 @@ export function OverviewVisuals({ context }: { context: PageContext }) {
   }) => setCalculationDetails(details);
   const completedRentals = monthRentals.filter((r) => r.end_date <= today());
   const operatingMargin = revenue > 0 ? (operatingProfit / revenue) * 100 : 0;
-  const cashFlowMargin = completedRevenue > 0 ? (cashFlow / completedRevenue) * 100 : 0;
+  const cashFlowMargin = revenue > 0 ? (cashFlow / revenue) * 100 : 0;
   const { periodStart, periodEnd, completedRentalDays, periodDays } = getOverviewPeriod(month, monthRentals);
   const bookedDaysPercentage = cars.length
     ? (rentalDays / (periodDays * cars.length)) * 100
@@ -125,8 +125,8 @@ export function OverviewVisuals({ context }: { context: PageContext }) {
           includes every booking in the selected period, even if it is still
           active. Completed rental income includes completed bookings only.
           Operating costs are used to estimate profit and exclude loan
-          principal. Cash expenses are actual recorded outflows and include loan
-          principal.
+          principal. Cash expenses are allocated to the selected period and
+          include loan principal.
         </span>
       </div>
       <div className="dashboard-grid">

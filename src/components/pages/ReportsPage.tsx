@@ -28,6 +28,7 @@ import {
 } from "recharts";
 import { money, monthKey, monthsBetween } from "../../model";
 import type { Car, Rental, Expense, Valuation } from "../../model";
+import { cashFlowMetricDetails } from "../financialMetricDefinitions";
 
 type PageContext = {
   cars: Car[];
@@ -129,7 +130,8 @@ export function ReportsPage({ context }: { context: PageContext }) {
     (r) => rentalRevenue(r) > 0,
   ).length;
   const operatingMargin = revenue > 0 ? (operatingProfit / revenue) * 100 : 0;
-  const cashFlowMargin = completedRevenue > 0 ? (cashFlow / completedRevenue) * 100 : 0;
+  const cashFlowMargin = revenue > 0 ? (cashFlow / revenue) * 100 : 0;
+  const cashFlowDetails = cashFlowMetricDetails({ revenue, cashExpenses, cashFlow, principal });
   const periodStart = month === "all" ? monthRentals.map((r) => r.start_date).sort()[0] || new Date().toISOString().slice(0, 10) : `${month}-01`;
   const periodEnd = month === "all" ? new Date().toISOString().slice(0, 10) : new Date(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0).toISOString().slice(0, 10);
   const completedRentalDays = monthRentals
@@ -521,38 +523,29 @@ export function ReportsPage({ context }: { context: PageContext }) {
         <Metric
           label="Cash flow after loan payments"
           value={money(cashFlow)}
-          hint={`${completedRevenue > 0 ? ((cashFlow / completedRevenue) * 100).toFixed(1) : "0.0"}% of completed rental income; includes principal`}
+          hint={`${revenue > 0 ? ((cashFlow / revenue) * 100).toFixed(1) : "0.0"}% of booked rental income; includes principal`}
           icon={<Activity />}
           tone={cashFlow >= 0 ? "purple" : "red"}
           onInfo={() =>
             showCalculation({
-              title: "Cash flow after loan payments",
-              definition:
-                "Completed rental income remaining after recorded cash expenses, including loan principal. This is the closest report figure to cash left before owner withdrawals and unrecorded costs.",
-              formula: "Completed rental income − cash expenses",
-              items: [
-                { label: "Completed rental income", value: money(completedRevenue) },
-                { label: "Cash expenses, including principal", value: money(cashExpenses) },
-                { label: "Cash flow", value: money(cashFlow) },
-                { label: "Cash margin on completed income", value: `${completedRevenue > 0 ? ((cashFlow / completedRevenue) * 100).toFixed(1) : "0.0"}%` },
-              ],
+              ...cashFlowDetails,
             })
           }
         />
         <Metric
           label="Cash-flow margin"
           value={`${cashFlowMargin.toFixed(1)}%`}
-          hint="Cash flow as a share of completed income"
+          hint="Cash flow as a share of booked rental income"
           icon={<Activity />}
           tone={cashFlowMargin >= 0 ? "purple" : "red"}
           onInfo={() =>
             showCalculation({
               title: "Cash-flow margin",
-              definition: "Cash flow after recorded expenses, including loan principal, as a percentage of completed rental income.",
-              formula: "Cash flow ÷ completed rental income × 100",
+              definition: "Cash flow after recorded expenses, including loan principal, as a percentage of booked rental income.",
+              formula: "Cash flow ÷ booked rental income × 100",
               items: [
                 { label: "Cash flow", value: money(cashFlow) },
-                { label: "Completed rental income", value: money(completedRevenue) },
+                { label: "Booked rental income", value: money(revenue) },
                 { label: "Cash-flow margin", value: `${cashFlowMargin.toFixed(1)}%` },
               ],
             })

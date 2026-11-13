@@ -593,16 +593,16 @@ export function useLedgerCalculations({
     automaticInsurance +
     automaticFinance +
     manualFinance +
-    completedPlatformCosts +
+    platformCosts +
     otherCashExpenses;
   const cashExpenseBreakdown = {
     insurance: automaticInsurance,
     finance: automaticFinance + manualFinance,
-    other: otherCashExpenses + completedPlatformCosts,
+    other: otherCashExpenses + platformCosts,
     otherItems: [
       ...otherCashExpenseItems,
-      ...(completedPlatformCosts > 0
-        ? [{ label: "Platform costs", value: completedPlatformCosts }]
+      ...(platformCosts > 0
+        ? [{ label: "Platform costs", value: platformCosts }]
         : []),
     ],
   };
@@ -679,7 +679,9 @@ export function useLedgerCalculations({
   const cashProfitBeforePrincipal =
     completedRevenue - (cashExpenses - principal);
   const profit = operatingProfit - estimatedDep;
-  const cashFlow = completedRevenue - cashExpenses;
+  // Cash flow is a booking forecast for the selected period: include active
+  // and future bookings alongside the cash expenses allocated to that period.
+  const cashFlow = revenue - cashExpenses;
   const chartData = useMemo(() => {
     const allDates = [
       ...cars.map((c) => c.purchase_date).filter(Boolean),
