@@ -132,9 +132,11 @@ export function ReportsPage({ context }: { context: PageContext }) {
   const operatingMargin = revenue > 0 ? (operatingProfit / revenue) * 100 : 0;
   const cashFlowMargin = revenue > 0 ? (cashFlow / revenue) * 100 : 0;
   const completedOperatingMargin = completedRevenue > 0 ? ((completedRevenue - monthExpenses) / completedRevenue) * 100 : 0;
-  const completedCashFlowMargin = completedRevenue > 0 ? (((completedRevenue - cashExpenses) / completedRevenue) * 100) : 0;
   const completedOperatingProfit = completedRevenue - monthExpenses;
-  const completedNetIncome = completedOperatingProfit - estimatedDep;
+  const completedDepreciation = monthRentals.filter((r) => r.end_date <= new Date().toISOString().slice(0, 10)).reduce((sum, rental) => sum + rentalDepreciation(rental), 0);
+  const completedNetIncome = completedOperatingProfit - completedDepreciation;
+  const completedCashFlow = completedRevenue - cashExpenses;
+  const completedCashFlowMargin = completedRevenue > 0 ? (completedCashFlow / completedRevenue) * 100 : 0;
   const cashFlowDetails = cashFlowMetricDetails({ revenue, cashExpenses, cashFlow, principal });
   const periodStart = month === "all" ? monthRentals.map((r) => r.start_date).sort()[0] || new Date().toISOString().slice(0, 10) : `${month}-01`;
   const periodEnd = month === "all" ? new Date().toISOString().slice(0, 10) : new Date(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0).toISOString().slice(0, 10);
@@ -445,7 +447,7 @@ export function ReportsPage({ context }: { context: PageContext }) {
           <span>Operating profit excludes loan principal; cash flow includes payments</span>
         </div>
         <Metric
-          label="Booked operating profit (before depreciation)"
+          label="Completed operating profit (before depreciation)"
           value={money(completedOperatingProfit)}
           hint={`${completedOperatingMargin.toFixed(1)}% of completed rental income; before depreciation and principal`}
           icon={<ChartNoAxesCombined />}
@@ -505,9 +507,9 @@ export function ReportsPage({ context }: { context: PageContext }) {
           }
         />
         <Metric
-          label="Booked net income (after depreciation)"
+          label="Completed net income (after depreciation)"
           value={money(completedNetIncome)}
-          hint={`${completedRevenue > 0 ? ((completedNetIncome / completedRevenue) * 100).toFixed(1) : "0.0"}% of completed rental income after estimated depreciation`}
+          hint={`${completedRevenue > 0 ? ((completedNetIncome / completedRevenue) * 100).toFixed(1) : "0.0"}% of completed rental income after completed-trip depreciation`}
           icon={<ChartNoAxesCombined />}
           tone={profit >= 0 ? "blue" : "red"}
           onInfo={() =>
@@ -523,6 +525,13 @@ export function ReportsPage({ context }: { context: PageContext }) {
               ],
             })
           }
+        />
+        <Metric
+          label="Completed cash flow after loan payments"
+          value={money(completedCashFlow)}
+          hint={`${completedCashFlowMargin.toFixed(1)}% of completed rental income; includes principal`}
+          icon={<Activity />}
+          tone={completedCashFlow >= 0 ? "purple" : "red"}
         />
         <Metric
           label="Cash flow after loan payments"
