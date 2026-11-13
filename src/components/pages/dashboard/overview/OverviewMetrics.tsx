@@ -350,7 +350,7 @@ export function OverviewMetrics({ context }: { context: PageContext }) {
           <span>Operating profit excludes loan principal; cash flow includes payments</span>
         </div>
         <Metric
-          label="Operating profit (before depreciation)"
+          label="Booked operating profit (before depreciation)"
           value={money(operatingProfit)}
           hint={`${revenue > 0 ? ((operatingProfit / revenue) * 100).toFixed(1) : "0.0"}% of booked revenue; before depreciation and principal`}
           icon={<ChartNoAxesCombined />}
@@ -369,7 +369,7 @@ export function OverviewMetrics({ context }: { context: PageContext }) {
           }
         />
         <Metric
-          label="Operating margin"
+          label="Booked operating margin"
           value={`${operatingMargin.toFixed(1)}%`}
           hint="Operating profit as a share of booked revenue"
           icon={<ChartNoAxesCombined />}
@@ -388,7 +388,7 @@ export function OverviewMetrics({ context }: { context: PageContext }) {
           }
         />
         <Metric
-          label="Cash remaining before loan principal"
+          label="Completed cash remaining before loan principal"
           value={money(cashProfitBeforePrincipal)}
           hint="Completed income − cash operating costs"
           icon={<Wallet />}
@@ -408,7 +408,7 @@ export function OverviewMetrics({ context }: { context: PageContext }) {
           }
         />
         <Metric
-          label="Estimated net income (after depreciation)"
+          label="Booked net income (after depreciation)"
           value={money(profit)}
           hint={`${revenue > 0 ? ((profit / revenue) * 100).toFixed(1) : "0.0"}% of booked revenue after estimated depreciation`}
           icon={<ChartNoAxesCombined />}
