@@ -241,7 +241,7 @@ export function OverviewMetrics({ context }: { context: PageContext }) {
           }
         />
         <Metric
-          label="Loan balance remaining"
+          label="Amount owed to bank (principal)"
           value={money(totalLoanBalance)}
           hint="Estimated principal still owed across financed vehicles"
           icon={<Wallet />}
@@ -256,6 +256,13 @@ export function OverviewMetrics({ context }: { context: PageContext }) {
               { label: "Remaining balance", value: money(totalLoanBalance) },
             ],
           })}
+        />
+        <Metric
+          label="Loan principal paid off"
+          value={money(principalPaid)}
+          hint="Principal repaid so far; excludes interest"
+          icon={<Wallet />}
+          tone="green"
         />
         <Metric
           label="Remaining loan payments incl. interest"
