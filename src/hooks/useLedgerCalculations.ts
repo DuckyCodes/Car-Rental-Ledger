@@ -327,12 +327,17 @@ export function useLedgerCalculations({
     }
     return total;
   };
-  const loanBalance = (c: Car) =>
-    Math.max(
+  const loanBalance = (c: Car) => {
+    const original = num(c.loan_original_amount);
+    if (original <= 0) return 0;
+    // If loan dates/term are missing, do not treat the loan as paid off.
+    // Keep the full original principal visible until the schedule is configured.
+    if (!loanConfigured(c)) return original;
+    return Math.max(
       0,
-      num(c.loan_original_amount) -
-        loanBreakdownThroughMonth(c, monthKey(today())).principal,
+      original - loanBreakdownThroughMonth(c, monthKey(today())).principal,
     );
+  };
   const totalLoanBalance = cars.reduce((sum, car) => sum + loanBalance(car), 0);
   const isManualFinanceRecord = (expense: Expense) => {
     const c = cars.find(
