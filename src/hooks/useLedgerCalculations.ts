@@ -283,10 +283,11 @@ export function useLedgerCalculations({
       Math.max(0, num(c.loan_annual_interest_rate)) / 100 / 12;
     const term = Math.max(1, Math.floor(num(c.loan_term_months)));
     const original = num(c.loan_original_amount);
-    const payment =
+    const calculatedPayment =
       monthlyRate === 0
         ? original / term
         : (original * monthlyRate) / (1 - Math.pow(1 + monthlyRate, -term));
+    const payment = num(c.loan_monthly_payment) > 0 ? num(c.loan_monthly_payment) : calculatedPayment;
     let balance = original;
     const elapsed = Math.max(
       0,
