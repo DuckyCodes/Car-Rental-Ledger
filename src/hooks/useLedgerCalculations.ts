@@ -339,6 +339,27 @@ export function useLedgerCalculations({
     );
   };
   const totalLoanBalance = cars.reduce((sum, car) => sum + loanBalance(car), 0);
+  const loanRemainingPayments = (c: Car) => {
+    const original = num(c.loan_original_amount);
+    if (original <= 0) return 0;
+    if (!loanConfigured(c)) return original;
+    const startMonth = monthKey(c.loan_start_date || "");
+    const currentMonth = monthKey(today());
+    const term = Math.max(1, Math.floor(num(c.loan_term_months)));
+    const elapsed = Math.max(
+      0,
+      (Number(currentMonth.slice(0, 4)) - Number(startMonth.slice(0, 4))) * 12 +
+        Number(currentMonth.slice(5, 7)) - Number(startMonth.slice(5, 7)),
+    );
+    let total = 0;
+    for (let index = elapsed; index < term; index++) {
+      const year = Number(startMonth.slice(0, 4)) + Math.floor((Number(startMonth.slice(5, 7)) - 1 + index) / 12);
+      const month = String(((Number(startMonth.slice(5, 7)) - 1 + index) % 12) + 1).padStart(2, "0");
+      total += loanBreakdownForMonth(c, `${year}-${month}`).payment;
+    }
+    return total;
+  };
+  const totalLoanRemainingPayments = cars.reduce((sum, car) => sum + loanRemainingPayments(car), 0);
   const isManualFinanceRecord = (expense: Expense) => {
     const c = cars.find(
       (vehicle) => vehicle.identification === expense.vehicle_identification,
@@ -795,6 +816,7 @@ export function useLedgerCalculations({
     loanBreakdownForMonth,
     loanBreakdownThroughMonth,
     totalLoanBalance,
+    totalLoanRemainingPayments,
     automaticFinanceForMonth,
     automaticPrincipalForMonth,
     automaticInterestForMonth,

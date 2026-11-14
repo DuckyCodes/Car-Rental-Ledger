@@ -88,6 +88,7 @@ export function OverviewMetrics({ context }: { context: PageContext }) {
     cashFlow,
     principal,
     totalLoanBalance,
+    totalLoanRemainingPayments,
     monthKm,
     estimatedDep,
     averageRevenuePerRentalDay,
@@ -255,6 +256,13 @@ export function OverviewMetrics({ context }: { context: PageContext }) {
               { label: "Remaining balance", value: money(totalLoanBalance) },
             ],
           })}
+        />
+        <Metric
+          label="Remaining loan payments incl. interest"
+          value={money(totalLoanRemainingPayments)}
+          hint="Estimated total future payments under the loan schedule"
+          icon={<Wallet />}
+          tone="orange"
         />
         <div className="metric-section-heading">
           <strong>Booking performance</strong>
