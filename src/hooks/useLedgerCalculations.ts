@@ -339,6 +339,8 @@ export function useLedgerCalculations({
     );
   };
   const totalLoanBalance = cars.reduce((sum, car) => sum + loanBalance(car), 0);
+  const totalOriginalLoan = cars.reduce((sum, car) => sum + Math.max(0, num(car.loan_original_amount)), 0);
+  const totalLoanPrincipalPaid = Math.max(0, totalOriginalLoan - totalLoanBalance);
   const loanRemainingPayments = (c: Car) => {
     const original = num(c.loan_original_amount);
     if (original <= 0) return 0;
@@ -816,6 +818,8 @@ export function useLedgerCalculations({
     loanBreakdownForMonth,
     loanBreakdownThroughMonth,
     totalLoanBalance,
+    totalOriginalLoan,
+    totalLoanPrincipalPaid,
     totalLoanRemainingPayments,
     automaticFinanceForMonth,
     automaticPrincipalForMonth,
