@@ -87,6 +87,7 @@ export function OverviewMetrics({ context }: { context: PageContext }) {
     profit,
     cashFlow,
     principal,
+    totalLoanBalance,
     monthKm,
     estimatedDep,
     averageRevenuePerRentalDay,
@@ -235,6 +236,13 @@ export function OverviewMetrics({ context }: { context: PageContext }) {
               ],
             })
           }
+        />
+        <Metric
+          label="Loan balance remaining"
+          value={money(totalLoanBalance)}
+          hint="Estimated principal still owed across financed vehicles"
+          icon={<Wallet />}
+          tone="red"
         />
         <div className="metric-section-heading">
           <strong>Booking performance</strong>

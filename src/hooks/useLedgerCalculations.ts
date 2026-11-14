@@ -327,6 +327,13 @@ export function useLedgerCalculations({
     }
     return total;
   };
+  const loanBalance = (c: Car) =>
+    Math.max(
+      0,
+      num(c.loan_original_amount) -
+        loanBreakdownThroughMonth(c, monthKey(today())).principal,
+    );
+  const totalLoanBalance = cars.reduce((sum, car) => sum + loanBalance(car), 0);
   const isManualFinanceRecord = (expense: Expense) => {
     const c = cars.find(
       (vehicle) => vehicle.identification === expense.vehicle_identification,
@@ -782,6 +789,7 @@ export function useLedgerCalculations({
     loanConfigured,
     loanBreakdownForMonth,
     loanBreakdownThroughMonth,
+    totalLoanBalance,
     automaticFinanceForMonth,
     automaticPrincipalForMonth,
     automaticInterestForMonth,
