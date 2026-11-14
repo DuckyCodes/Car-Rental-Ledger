@@ -28,6 +28,7 @@ import {
 import { today, money, num, dateDiff, monthKey, API } from "../../model";
 import type { Car, Rental, Expense, Valuation } from "../../model";
 import { estimateCanadaVehicleCosts, canadaEstimatorSources } from "../../canadaVehicleEstimator";
+import { VehicleEstimateChart } from "../VehicleEstimateChart";
 
 type PageContext = {
   cars: Car[];
@@ -195,6 +196,7 @@ export function CarsPage({ context }: { context: PageContext }) {
                   ],
                 })}>View calculation</button>
               </div>
+              <VehicleEstimateChart car={c} />
               <div className="vehicle-actions">
                 <button
                   className="secondary small"
