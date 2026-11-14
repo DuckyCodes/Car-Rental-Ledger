@@ -38,6 +38,7 @@ if (!carColumns.some(column => column.name === 'loan_original_amount')) db.exec(
 if (!carColumns.some(column => column.name === 'loan_annual_interest_rate')) db.exec('ALTER TABLE cars ADD COLUMN loan_annual_interest_rate REAL NOT NULL DEFAULT 0');
 if (!carColumns.some(column => column.name === 'loan_term_months')) db.exec('ALTER TABLE cars ADD COLUMN loan_term_months INTEGER NOT NULL DEFAULT 0');
 if (!carColumns.some(column => column.name === 'loan_start_date')) db.exec('ALTER TABLE cars ADD COLUMN loan_start_date TEXT DEFAULT NULL');
+if (!carColumns.some(column => column.name === 'loan_current_balance')) db.exec('ALTER TABLE cars ADD COLUMN loan_current_balance REAL NOT NULL DEFAULT 0');
 const legacyColumns:Record<string,string[]> = { cars: ['id'], rentals: ['id','car_id','vehicle_id'], expenses: ['id','car_id','vehicle_id','rental_id'], valuations: ['id','car_id','vehicle_id'] };
 for (const [table, columnsToRename] of Object.entries(legacyColumns)) {
   const columns = db.prepare(`PRAGMA table_info(${table})`).all() as {name:string}[];

@@ -329,6 +329,7 @@ export function useLedgerCalculations({
   };
   const loanBalance = (c: Car) => {
     const original = num(c.loan_original_amount);
+    if (num(c.loan_current_balance) > 0) return num(c.loan_current_balance);
     if (original <= 0) return 0;
     // If loan dates/term are missing, do not treat the loan as paid off.
     // Keep the full original principal visible until the schedule is configured.

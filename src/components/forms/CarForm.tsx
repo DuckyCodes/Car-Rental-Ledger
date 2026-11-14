@@ -42,6 +42,7 @@ export function CarForm({
           loan_annual_interest_rate: num(d.loan_annual_interest_rate),
           loan_term_months: num(d.loan_term_months),
           loan_start_date: d.loan_start_date || null,
+          loan_current_balance: num(d.loan_current_balance),
         });
       }}
     >
@@ -152,6 +153,15 @@ export function CarForm({
           type="date"
           value={d.loan_start_date || ""}
           onChange={(e) => set("loan_start_date", e.target.value)}
+        />
+      </Field>
+      <Field label="Current amount owed to bank (CAD)">
+        <input
+          type="number"
+          min="0"
+          step="0.01"
+          value={d.loan_current_balance || ""}
+          onChange={(e) => set("loan_current_balance", e.target.value)}
         />
       </Field>
       <div className="field wide">
