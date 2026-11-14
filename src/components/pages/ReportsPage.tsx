@@ -138,6 +138,8 @@ export function ReportsPage({ context }: { context: PageContext }) {
   const completedNetIncome = completedOperatingProfit - completedDepreciation;
   const completedCashFlow = completedRevenue - cashExpenses;
   const completedCashFlowMargin = completedRevenue > 0 ? (completedCashFlow / completedRevenue) * 100 : 0;
+  const totalOriginalLoan = cars.reduce((sum, car) => sum + (Number(car.loan_original_amount) || 0), 0);
+  const principalPaid = Math.max(0, totalOriginalLoan - totalLoanBalance);
   const cashFlowDetails = cashFlowMetricDetails({ revenue, cashExpenses, cashFlow, principal });
   const periodStart = month === "all" ? monthRentals.map((r) => r.start_date).sort()[0] || new Date().toISOString().slice(0, 10) : `${month}-01`;
   const periodEnd = month === "all" ? new Date().toISOString().slice(0, 10) : new Date(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0).toISOString().slice(0, 10);
@@ -291,6 +293,16 @@ export function ReportsPage({ context }: { context: PageContext }) {
           hint="Estimated principal still owed across financed vehicles"
           icon={<Wallet />}
           tone="red"
+          onInfo={() => setCalculationDetails({
+            title: "Loan balance remaining",
+            definition: "Estimated principal still owed across financed vehicles as of today.",
+            formula: "Original loan amount − scheduled principal paid",
+            items: [
+              { label: "Original loan amount", value: money(totalOriginalLoan) },
+              { label: "Scheduled principal paid", value: money(principalPaid) },
+              { label: "Remaining balance", value: money(totalLoanBalance) },
+            ],
+          })}
         />
         <div className="metric-section-heading">
           <strong>Booking performance</strong>
