@@ -27,6 +27,7 @@ import {
 } from "recharts";
 import { today, money, num, dateDiff, monthKey, API } from "../../model";
 import type { Car, Rental, Expense, Valuation } from "../../model";
+import { estimateCanadaVehicleCosts, canadaEstimatorSources } from "../../canadaVehicleEstimator";
 
 type PageContext = {
   cars: Car[];
@@ -133,6 +134,10 @@ export function CarsPage({ context }: { context: PageContext }) {
         <div className="data-grid">
           {cars.map((c) => (
             <article className="vehicle-card" key={c.identification}>
+              {(() => {
+                const estimate = estimateCanadaVehicleCosts(c);
+                return (
+                  <>
               <div className="vehicle-card-top">
                 <div className="car-avatar large">
                   <CarFront size={23} />
@@ -166,6 +171,29 @@ export function CarsPage({ context }: { context: PageContext }) {
                   <span>Depreciation estimate</span>
                   <strong>{depreciationDescription(c)}</strong>
                 </div>
+                <div>
+                  <span>Canada baseline maintenance</span>
+                  <strong>{money(estimate.annualMaintenance)}/yr</strong>
+                </div>
+                <div>
+                  <span>Major repair probability</span>
+                  <strong>{(estimate.majorRepairProbability * 100).toFixed(1)}%/yr</strong>
+                </div>
+              </div>
+              <div className="hint-box">
+                <strong>Automatic Canada estimate</strong><br />
+                Depreciation: {money(estimate.annualDepreciation)}/yr · age {estimate.ageYears} years · baseline confidence.<br />
+                Fuel ratings: <a href={canadaEstimatorSources.fuel} target="_blank" rel="noreferrer">NRCan public data</a> · recalls: <a href={canadaEstimatorSources.recalls} target="_blank" rel="noreferrer">Transport Canada</a>.
+                <button className="text-button" onClick={() => setCalculationDetails({
+                  title: "Canada vehicle estimate",
+                  definition: "A transparent Canada-wide baseline using age, odometer, purchase/current value, and public federal data links. It is not a trim-level market quote.",
+                  formula: "Depreciation = current value × age rate × mileage factor; maintenance = age/mileage adjusted baseline; repair risk = age + mileage risk model",
+                  items: [
+                    { label: "Annual depreciation", value: money(estimate.annualDepreciation) },
+                    { label: "Annual maintenance", value: money(estimate.annualMaintenance) },
+                    { label: "Major repair probability", value: `${(estimate.majorRepairProbability * 100).toFixed(1)}%` },
+                  ],
+                })}>View calculation</button>
               </div>
               <div className="vehicle-actions">
                 <button
@@ -190,6 +218,9 @@ export function CarsPage({ context }: { context: PageContext }) {
                   <Trash2 size={16} />
                 </button>
               </div>
+                  </>
+                );
+              })()}
             </article>
           ))}
         </div>
