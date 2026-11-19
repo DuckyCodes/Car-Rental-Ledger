@@ -108,8 +108,10 @@ export function CarsPage({ context }: { context: PageContext }) {
     isManualFinanceEntry,
     insuranceCostForMonth,
     insuranceConfigured,
+    loanScheduleSummary,
     totalVehicleKilometres,
     depreciationDescription,
+    vehicleCostSummary,
   } = context;
   return (
     <>
@@ -137,6 +139,11 @@ export function CarsPage({ context }: { context: PageContext }) {
             <article className="vehicle-card" key={c.identification}>
               {(() => {
                 const estimate = estimateCanadaVehicleCosts(c);
+                const costs = vehicleCostSummary(c);
+                const loanSchedule = loanScheduleSummary(c);
+                const latestValuation = valuations
+                  .filter((valuation) => valuation.vehicle_identification === c.identification)
+                  .sort((a, b) => b.date.localeCompare(a.date))[0];
                 return (
                   <>
               <div className="vehicle-card-top">
@@ -165,7 +172,7 @@ export function CarsPage({ context }: { context: PageContext }) {
                   <strong>{num(c.odometer_km).toLocaleString()} km</strong>
                 </div>
                 <div>
-                  <span>Purchase price</span>
+                  <span>Vehicle price (before financing)</span>
                   <strong>{money(num(c.purchase_price))}</strong>
                 </div>
                 <div>
@@ -180,6 +187,55 @@ export function CarsPage({ context }: { context: PageContext }) {
                   <span>Major repair probability</span>
                   <strong>{(estimate.majorRepairProbability * 100).toFixed(1)}%/yr</strong>
                 </div>
+              </div>
+              <div className="vehicle-cost-summary">
+                <div className="section-divider">Financing & true cost to date</div>
+                <div className="cost-summary-grid">
+                  <div>
+                    <span>Current equity</span>
+                    <strong className={costs.equity < 0 ? "negative" : "positive"}>
+                      {money(costs.equity)}
+                    </strong>
+                  </div>
+                  <div>
+                    <span>Calculated loan balance</span>
+                    <strong>{money(costs.loanBalance)}</strong>
+                  </div>
+                  <div>
+                    <span>Cash paid toward vehicle</span>
+                    <strong>{money(costs.cashPaidTowardVehicle)}</strong>
+                  </div>
+                  <div>
+                    <span>Interest paid</span>
+                    <strong>{money(costs.interestPaid)}</strong>
+                  </div>
+                  <div>
+                    <span>Scheduled monthly payment</span>
+                    <strong>{money(loanSchedule.monthlyPayment)}</strong>
+                  </div>
+                  <div>
+                    <span>Total scheduled repayment</span>
+                    <strong>{money(loanSchedule.totalRepayment)}</strong>
+                  </div>
+                  <div>
+                    <span>Total scheduled interest</span>
+                    <strong>{money(loanSchedule.totalInterest)}</strong>
+                  </div>
+                  <div>
+                    <span>Other vehicle expenses</span>
+                    <strong>{money(costs.otherExpenses)}</strong>
+                  </div>
+                  <div>
+                    <span>Net cost after current equity</span>
+                    <strong>{money(costs.netCost)}</strong>
+                  </div>
+                </div>
+                <p className="cost-summary-note">
+                  Cash paid includes down payment, principal and interest. Net cost also
+                  accounts for what the car is worth today after the remaining loan.
+                  " Loan balance is calculated from the loan schedule and recorded principal payments."
+                  {latestValuation ? ` Last valuation: ${latestValuation.date}.` : " Add a valuation to start a value history."}
+                </p>
               </div>
               <div className="hint-box">
                 <strong>Automatic Canada estimate</strong><br />

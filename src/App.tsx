@@ -87,6 +87,7 @@ function App() {
     daysInMonth,
     rentalDaysInMonth,
     insuranceConfigured,
+    loanScheduleSummary,
     insuranceCostForMonth,
     loanConfigured,
     loanBreakdownForMonth,
@@ -101,6 +102,7 @@ function App() {
     automaticLoanBreakdownForMonth,
     automaticLoanBreakdownThroughToday,
     insuranceCostThroughToday,
+    vehicleCostSummary,
     isManualFinanceEntry,
     isManualPrincipalEntry,
     isManualInterestEntry,
@@ -370,8 +372,10 @@ function App() {
     insuranceCostForMonth,
     insuranceCostThroughToday,
     insuranceConfigured,
+    loanScheduleSummary,
     totalVehicleKilometres,
     depreciationDescription,
+    vehicleCostSummary,
   };
 
   return (
@@ -531,6 +535,8 @@ function App() {
                 }
               }
               cars={cars}
+              rentals={rentals}
+              valuations={valuations}
               onSave={async (d) => {
                 await save("valuations", d);
                 const c = cars.find(

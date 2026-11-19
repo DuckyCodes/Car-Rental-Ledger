@@ -20,6 +20,7 @@ export type Car = {
   loan_start_date: string | null;
   loan_current_balance: number;
   loan_monthly_payment: number;
+  loan_total_interest: number;
   notes: string;
 };
 export type Rental = {
@@ -137,6 +138,7 @@ export const blankCar = {
   loan_start_date: "",
   loan_current_balance: 0,
   loan_monthly_payment: 0,
+  loan_total_interest: 0,
   notes: "",
 };
 export const blankRental = {

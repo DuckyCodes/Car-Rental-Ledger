@@ -44,6 +44,7 @@ export function CarForm({
           loan_start_date: d.loan_start_date || null,
           loan_current_balance: num(d.loan_current_balance),
           loan_monthly_payment: num(d.loan_monthly_payment),
+          loan_total_interest: num(d.loan_total_interest),
         });
       }}
     >
@@ -84,15 +85,13 @@ export function CarForm({
           onChange={(e) => set("purchase_price", e.target.value)}
         />
       </Field>
-      <Field label="Current market value (CAD)">
-        <input
-          type="number"
-          min="0"
-          step="0.01"
-          value={d.current_value}
-          onChange={(e) => set("current_value", e.target.value)}
-        />
-      </Field>
+      <div className="field wide">
+        <div className="hint-box">
+          Current value is tracked through estimated valuations. Add or update
+          a valuation after saving the vehicle instead of entering a separate
+          current-value number here.
+        </div>
+      </div>
       <Field label="Current odometer (km)">
         <input
           type="number"
@@ -156,15 +155,6 @@ export function CarForm({
           onChange={(e) => set("loan_start_date", e.target.value)}
         />
       </Field>
-      <Field label="Current amount owed to bank (CAD)">
-        <input
-          type="number"
-          min="0"
-          step="0.01"
-          value={d.loan_current_balance || ""}
-          onChange={(e) => set("loan_current_balance", e.target.value)}
-        />
-      </Field>
       <Field label="Monthly loan payment (CAD)">
         <input
           type="number"
@@ -174,11 +164,23 @@ export function CarForm({
           onChange={(e) => set("loan_monthly_payment", e.target.value)}
         />
       </Field>
+      <Field label="Total loan interest (CAD)">
+        <input
+          type="number"
+          min="0"
+          step="0.01"
+          value={d.loan_total_interest || ""}
+          onChange={(e) => set("loan_total_interest", e.target.value)}
+        />
+      </Field>
       <div className="field wide">
         <div className="hint-box">
           When all four loan fields are entered, monthly principal and interest
           are calculated automatically. Existing manual finance entries are
-          replaced in reports for that vehicle to prevent double counting.
+          replaced in reports for that vehicle to prevent double counting. The
+          current loan balance is calculated from the schedule and recorded
+          principal payments. If your lender gives a total interest figure,
+          enter it here and it will override the generic APR estimate.
         </div>
       </div>
       <Field label="Depreciation method">

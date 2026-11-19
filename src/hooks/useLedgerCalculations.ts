@@ -274,6 +274,31 @@ export function useLedgerCalculations({
     num(c.loan_original_amount) > 0 &&
     num(c.loan_term_months) > 0 &&
     Boolean(c.loan_start_date);
+  const loanScheduleSummary = (c: Car) => {
+    const principal = Math.max(0, num(c.loan_original_amount));
+    const term = Math.max(0, Math.floor(num(c.loan_term_months)));
+    if (!principal || !term)
+      return { monthlyPayment: 0, totalRepayment: 0, totalInterest: 0 };
+    const monthlyRate = Math.max(0, num(c.loan_annual_interest_rate)) / 100 / 12;
+    const calculatedPayment =
+      monthlyRate === 0
+        ? principal / term
+        : (principal * monthlyRate) / (1 - Math.pow(1 + monthlyRate, -term));
+    const lenderInterest = Math.max(0, num(c.loan_total_interest));
+    const lenderTotalRepayment = principal + lenderInterest;
+    const monthlyPayment =
+      num(c.loan_monthly_payment) > 0
+        ? num(c.loan_monthly_payment)
+        : lenderInterest > 0
+          ? lenderTotalRepayment / term
+          : calculatedPayment;
+    const totalRepayment = monthlyPayment * term;
+    return {
+      monthlyPayment,
+      totalRepayment: lenderInterest > 0 ? principal + lenderInterest : totalRepayment,
+      totalInterest: lenderInterest > 0 ? lenderInterest : Math.max(0, totalRepayment - principal),
+    };
+  };
   const loanBreakdownForMonth = (c: Car, monthKeyValue: string) => {
     if (!loanConfigured(c)) return { payment: 0, principal: 0, interest: 0 };
     const startMonth = monthKey(c.loan_start_date || "");
@@ -330,7 +355,6 @@ export function useLedgerCalculations({
   };
   const loanBalance = (c: Car) => {
     const original = num(c.loan_original_amount);
-    if (num(c.loan_current_balance) > 0) return num(c.loan_current_balance);
     if (original <= 0) return 0;
     // If loan dates/term are missing, do not treat the loan as paid off.
     // Keep the full original principal visible until the schedule is configured.
@@ -476,6 +500,71 @@ export function useLedgerCalculations({
       monthKey(c.purchase_date || allTimeEndMonth + "-01"),
       allTimeEndMonth,
     ).reduce((sum, key) => sum + insuranceCostForMonth(c, key) * allTimeMonthFactor(key), 0);
+  const isVehicleFinanceExpense = (c: Car, expense: Expense) => {
+    const category = String(expense.category || "").toLowerCase();
+    return (
+      expense.vehicle_identification === c.identification &&
+      (category.includes("finance") ||
+        category.includes("loan") ||
+        expense.treatment === "loan_principal")
+    );
+  };
+  const vehicleCostSummary = (c: Car) => {
+    const financeExpenses = expenses.filter(
+      (expense) =>
+        isVehicleFinanceExpense(c, expense) && expense.date <= today(),
+    );
+    const manualFinancePaid = financeExpenses.reduce(
+      (sum, expense) => sum + expenseAmountForPeriod(expense, "all"),
+      0,
+    );
+    const manualPrincipalPaid = financeExpenses
+      .filter((expense) => isManualPrincipalEntry(expense))
+      .reduce((sum, expense) => sum + expenseAmountForPeriod(expense, "all"), 0);
+    const manualInterestPaid = financeExpenses
+      .filter((expense) => isManualInterestEntry(expense))
+      .reduce((sum, expense) => sum + expenseAmountForPeriod(expense, "all"), 0);
+    const automaticLoan = automaticLoanBreakdownThroughToday(c);
+    const financePaid = automaticLoan.payment + manualFinancePaid;
+    const principalPaid = automaticLoan.principal + manualPrincipalPaid;
+    const interestPaid = automaticLoan.interest + manualInterestPaid;
+    const originalLoan = Math.max(0, num(c.loan_original_amount));
+    const initialCash =
+      originalLoan > 0
+        ? Math.max(0, num(c.purchase_price) - originalLoan)
+        : Math.max(0, num(c.purchase_price));
+    const loanBalance =
+      originalLoan > 0
+        ? Math.max(0, originalLoan - principalPaid)
+        : 0;
+    const otherExpenses = expenses
+      .filter(
+        (expense) =>
+          expense.vehicle_identification === c.identification &&
+          expense.date <= today() &&
+          !isVehicleFinanceExpense(c, expense) &&
+          !(expense.category.startsWith("Insurance") && insuranceConfigured(c.identification)),
+      )
+      .reduce((sum, expense) => sum + expenseAmountForPeriod(expense, "all"), 0);
+    const insurance = insuranceConfigured(c.identification)
+      ? insuranceCostThroughToday(c)
+      : 0;
+    const cashPaidTowardVehicle = initialCash + financePaid;
+    const totalCashOutlay = cashPaidTowardVehicle + otherExpenses + insurance;
+    const equity = num(c.current_value) - loanBalance;
+    return {
+      initialCash,
+      financePaid,
+      principalPaid,
+      interestPaid,
+      loanBalance,
+      equity,
+      otherExpenses: otherExpenses + insurance,
+      cashPaidTowardVehicle,
+      totalCashOutlay,
+      netCost: totalCashOutlay - equity,
+    };
+  };
   const depreciationDescription = (c: Car) =>
     c.depreciation_model === "declining_balance"
       ? `${Math.round(num(c.annual_decline_rate) * 100)}% annual declining balance`
@@ -817,6 +906,7 @@ export function useLedgerCalculations({
     insuranceConfigured,
     insuranceCostForMonth,
     loanConfigured,
+    loanScheduleSummary,
     loanBreakdownForMonth,
     loanBreakdownThroughMonth,
     totalLoanBalance,
@@ -829,6 +919,7 @@ export function useLedgerCalculations({
     automaticLoanBreakdownForMonth,
     automaticLoanBreakdownThroughToday,
     insuranceCostThroughToday,
+    vehicleCostSummary,
     isManualFinanceEntry,
     isManualPrincipalEntry,
     isManualInterestEntry,

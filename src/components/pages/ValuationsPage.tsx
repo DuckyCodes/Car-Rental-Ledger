@@ -108,6 +108,7 @@ export function ValuationsPage({ context }: { context: PageContext }) {
     insuranceConfigured,
     totalVehicleKilometres,
     depreciationDescription,
+    vehicleCostSummary,
   } = context;
   return (
     <>
@@ -210,16 +211,26 @@ export function ValuationsPage({ context }: { context: PageContext }) {
             first && last && first.identification !== last.identification
               ? num(last.market_value) - num(first.market_value)
               : num(c.current_value) - num(c.purchase_price);
+          const costs = vehicleCostSummary(c);
           return (
             <div className="panel valuation-card" key={c.identification}>
               <span>{c.name}</span>
               <strong>{money(c.current_value)}</strong>
-              <p>Current estimated value</p>
+              <p>
+                Current estimated value
+                {last ? ` · updated ${last.date}` : " · no valuation history yet"}
+              </p>
               <div className="valuation-bottom">
                 <span>Change since purchase</span>
                 <b className={delta < 0 ? "negative" : "positive"}>
                   {delta > 0 ? "+" : ""}
                   {money(delta)}
+                </b>
+              </div>
+              <div className="valuation-bottom">
+                <span>Equity after loan</span>
+                <b className={costs.equity < 0 ? "negative" : "positive"}>
+                  {money(costs.equity)}
                 </b>
               </div>
             </div>
