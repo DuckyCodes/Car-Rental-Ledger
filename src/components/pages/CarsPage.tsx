@@ -141,8 +141,9 @@ export function CarsPage({ context }: { context: PageContext }) {
               {(() => {
                 const estimate = estimateCanadaVehicleCosts(c);
                 const publicEstimate = publicEstimates[c.identification];
-                const marketValue = publicEstimate?.marketValue ?? num(c.current_value);
-                const costs = vehicleCostSummary(c, marketValue);
+                const publicEstimateResultLoaded = Object.prototype.hasOwnProperty.call(publicEstimates, c.identification);
+                const marketValue = publicEstimate?.marketValue ?? 0;
+                const costs = publicEstimate ? vehicleCostSummary(c, marketValue) : null;
                 const loanSchedule = loanScheduleSummary(c);
                 const latestValuation = valuations
                   .filter((valuation) => valuation.vehicle_identification === c.identification)
@@ -167,8 +168,8 @@ export function CarsPage({ context }: { context: PageContext }) {
               </p>
               <div className="vehicle-stats">
                 <div>
-                  <span>{publicEstimate ? "Public market estimate" : "Current value"}</span>
-                  <strong>{money(marketValue)}</strong>
+                  <span>{publicEstimate ? "Public market estimate" : publicEstimateResultLoaded ? "Public estimate unavailable" : "Updating public estimate"}</span>
+                  <strong>{publicEstimate ? money(marketValue) : "—"}</strong>
                 </div>
                 <div>
                   <span>Odometer</span>
@@ -183,7 +184,7 @@ export function CarsPage({ context }: { context: PageContext }) {
                   <strong>
                     {publicEstimate
                       ? `${(publicEstimate.annualDepreciationRate * 100).toFixed(1)}% annual public-market trend`
-                      : depreciationDescription(c)}
+                      : "Public estimate unavailable"}
                   </strong>
                 </div>
                 <div>
@@ -200,21 +201,21 @@ export function CarsPage({ context }: { context: PageContext }) {
                 <div className="cost-summary-grid">
                   <div>
                     <span>Current equity</span>
-                    <strong className={costs.equity < 0 ? "negative" : "positive"}>
-                      {money(costs.equity)}
+                    <strong className={(costs?.equity ?? 0) < 0 ? "negative" : "positive"}>
+                      {costs ? money(costs.equity) : "—"}
                     </strong>
                   </div>
                   <div>
                     <span>Calculated loan balance</span>
-                    <strong>{money(costs.loanBalance)}</strong>
+                    <strong>{costs ? money(costs.loanBalance) : "—"}</strong>
                   </div>
                   <div>
                     <span>Cash paid toward vehicle</span>
-                    <strong>{money(costs.cashPaidTowardVehicle)}</strong>
+                    <strong>{costs ? money(costs.cashPaidTowardVehicle) : "—"}</strong>
                   </div>
                   <div>
                     <span>Interest paid</span>
-                    <strong>{money(costs.interestPaid)}</strong>
+                    <strong>{costs ? money(costs.interestPaid) : "—"}</strong>
                   </div>
                   <div>
                     <span>Scheduled monthly payment</span>
@@ -230,17 +231,18 @@ export function CarsPage({ context }: { context: PageContext }) {
                   </div>
                   <div>
                     <span>Other vehicle expenses</span>
-                    <strong>{money(costs.otherExpenses)}</strong>
+                    <strong>{costs ? money(costs.otherExpenses) : "—"}</strong>
                   </div>
                   <div>
                     <span>Net cost after current equity</span>
-                    <strong>{money(costs.netCost)}</strong>
+                    <strong>{costs ? money(costs.netCost) : "—"}</strong>
                   </div>
                 </div>
                 <p className="cost-summary-note">
                   Cash paid includes down payment, principal and interest. Net cost also
                   accounts for what the car is worth today after the remaining loan.
                   {" Loan balance is calculated from the loan schedule and recorded principal payments."}
+                  {!publicEstimate && " Public market value is still being retrieved, so equity and net cost are temporarily hidden."}
                   {latestValuation ? ` Last valuation: ${latestValuation.date}.` : " Add a valuation to start a value history."}
                 </p>
               </div>
@@ -278,11 +280,15 @@ export function CarsPage({ context }: { context: PageContext }) {
                   ],
                 })}>View calculation</button>
               </div>
-              <VehicleEstimateChart
-                car={c}
-                marketValue={marketValue}
-                annualDepreciationRate={publicEstimate?.annualDepreciationRate}
-              />
+              {publicEstimate ? (
+                <VehicleEstimateChart
+                  car={c}
+                  marketValue={marketValue}
+                  annualDepreciationRate={publicEstimate.annualDepreciationRate}
+                />
+              ) : (
+                <div className="hint-box">The outlook chart will appear after the public market estimate loads.</div>
+              )}
               <div className="vehicle-actions">
                 <button
                   className="secondary small"

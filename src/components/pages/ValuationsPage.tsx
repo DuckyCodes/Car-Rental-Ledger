@@ -213,12 +213,12 @@ export function ValuationsPage({ context }: { context: PageContext }) {
               ? num(last.market_value) - num(first.market_value)
               : num(c.current_value) - num(c.purchase_price);
           const publicEstimate = publicEstimates[c.identification];
-          const marketValue = publicEstimate?.marketValue ?? num(c.current_value);
-          const displayCosts = vehicleCostSummary(c, marketValue);
+          const marketValue = publicEstimate?.marketValue ?? 0;
+          const displayCosts = publicEstimate ? vehicleCostSummary(c, marketValue) : null;
           return (
             <div className="panel valuation-card" key={c.identification}>
               <span>{c.name}</span>
-              <strong>{money(marketValue)}</strong>
+              <strong>{publicEstimate ? money(marketValue) : "Public estimate unavailable"}</strong>
               <p>
                 Public market estimate
                 {last ? ` · updated ${last.date}` : " · no valuation history yet"}
@@ -226,14 +226,13 @@ export function ValuationsPage({ context }: { context: PageContext }) {
               <div className="valuation-bottom">
                 <span>Change since purchase</span>
                 <b className={delta < 0 ? "negative" : "positive"}>
-                  {delta > 0 ? "+" : ""}
-                  {money(delta)}
+                  {publicEstimate ? `${delta > 0 ? "+" : ""}${money(delta)}` : "—"}
                 </b>
               </div>
               <div className="valuation-bottom">
                 <span>Equity after loan</span>
-                <b className={displayCosts.equity < 0 ? "negative" : "positive"}>
-                  {money(displayCosts.equity)}
+                <b className={(displayCosts?.equity ?? 0) < 0 ? "negative" : "positive"}>
+                  {displayCosts ? money(displayCosts.equity) : "—"}
                 </b>
               </div>
             </div>

@@ -102,6 +102,7 @@ export function OverviewVisuals({ context }: { context: PageContext }) {
     totalVehicleKilometres,
     totalDepreciation,
     depreciationDescription,
+    publicEstimates,
   } = context;
   const showCalculation = (details: {
     title: string;
@@ -223,6 +224,10 @@ export function OverviewVisuals({ context }: { context: PageContext }) {
             <div className="fleet-list">
               {cars.slice(0, 5).map((c) => (
                 <div className="fleet-row" key={c.identification}>
+                  {(() => {
+                    const publicEstimate = publicEstimates?.[c.identification];
+                    return (
+                      <>
                   <div className="car-avatar">
                     <CarFront size={19} />
                   </div>
@@ -234,9 +239,12 @@ export function OverviewVisuals({ context }: { context: PageContext }) {
                     </span>
                   </div>
                   <div className="fleet-value">
-                    <strong>{money(num(c.current_value))}</strong>
-                    <span>market value</span>
+                    <strong>{publicEstimate ? money(publicEstimate.marketValue) : "—"}</strong>
+                    <span>{publicEstimate ? "public market estimate" : "estimate unavailable"}</span>
                   </div>
+                      </>
+                    );
+                  })()}
                 </div>
               ))}
             </div>
