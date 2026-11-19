@@ -301,8 +301,10 @@ export function useLedgerCalculations({
   };
   const loanBreakdownForMonth = (c: Car, monthKeyValue: string) => {
     if (!loanConfigured(c)) return { payment: 0, principal: 0, interest: 0 };
-    const startMonth = monthKey(c.loan_start_date || "");
-    if (monthKeyValue < startMonth)
+    const firstPaymentDate = new Date(`${c.loan_start_date}T12:00:00`);
+    firstPaymentDate.setMonth(firstPaymentDate.getMonth() + 1);
+    const firstPaymentMonth = monthKey(firstPaymentDate.toISOString());
+    if (monthKeyValue < firstPaymentMonth)
       return { payment: 0, principal: 0, interest: 0 };
     const monthlyRate =
       Math.max(0, num(c.loan_annual_interest_rate)) / 100 / 12;
@@ -316,10 +318,10 @@ export function useLedgerCalculations({
     let balance = original;
     const elapsed = Math.max(
       0,
-      (Number(monthKeyValue.slice(0, 4)) - Number(startMonth.slice(0, 4))) *
+      (Number(monthKeyValue.slice(0, 4)) - Number(firstPaymentMonth.slice(0, 4))) *
         12 +
         Number(monthKeyValue.slice(5, 7)) -
-        Number(startMonth.slice(5, 7)),
+        Number(firstPaymentMonth.slice(5, 7)),
     );
     for (let index = 0; index < Math.min(elapsed, term); index++) {
       const interest = balance * monthlyRate;
@@ -371,18 +373,21 @@ export function useLedgerCalculations({
     const original = num(c.loan_original_amount);
     if (original <= 0) return 0;
     if (!loanConfigured(c)) return original;
-    const startMonth = monthKey(c.loan_start_date || "");
+    const firstPaymentDate = new Date(`${c.loan_start_date}T12:00:00`);
+    firstPaymentDate.setMonth(firstPaymentDate.getMonth() + 1);
+    const firstPaymentMonth = monthKey(firstPaymentDate.toISOString());
     const currentMonth = monthKey(today());
     const term = Math.max(1, Math.floor(num(c.loan_term_months)));
-    const elapsed = Math.max(
+    const paymentIndexThisMonth = Math.max(
       0,
-      (Number(currentMonth.slice(0, 4)) - Number(startMonth.slice(0, 4))) * 12 +
-        Number(currentMonth.slice(5, 7)) - Number(startMonth.slice(5, 7)),
+      (Number(currentMonth.slice(0, 4)) - Number(firstPaymentMonth.slice(0, 4))) * 12 +
+        Number(currentMonth.slice(5, 7)) - Number(firstPaymentMonth.slice(5, 7)),
     );
+    const elapsed = currentMonth < firstPaymentMonth ? 0 : paymentIndexThisMonth + 1;
     let total = 0;
     for (let index = elapsed; index < term; index++) {
-      const year = Number(startMonth.slice(0, 4)) + Math.floor((Number(startMonth.slice(5, 7)) - 1 + index) / 12);
-      const month = String(((Number(startMonth.slice(5, 7)) - 1 + index) % 12) + 1).padStart(2, "0");
+      const year = Number(firstPaymentMonth.slice(0, 4)) + Math.floor((Number(firstPaymentMonth.slice(5, 7)) - 1 + index) / 12);
+      const month = String(((Number(firstPaymentMonth.slice(5, 7)) - 1 + index) % 12) + 1).padStart(2, "0");
       total += loanBreakdownForMonth(c, `${year}-${month}`).payment;
     }
     return total;
