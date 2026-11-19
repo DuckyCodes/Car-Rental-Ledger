@@ -41,6 +41,9 @@ if (!carColumns.some(column => column.name === 'loan_start_date')) db.exec('ALTE
 if (!carColumns.some(column => column.name === 'loan_current_balance')) db.exec('ALTER TABLE cars ADD COLUMN loan_current_balance REAL NOT NULL DEFAULT 0');
 if (!carColumns.some(column => column.name === 'loan_monthly_payment')) db.exec('ALTER TABLE cars ADD COLUMN loan_monthly_payment REAL NOT NULL DEFAULT 0');
 if (!carColumns.some(column => column.name === 'loan_total_interest')) db.exec('ALTER TABLE cars ADD COLUMN loan_total_interest REAL NOT NULL DEFAULT 0');
+if (!carColumns.some(column => column.name === 'trim')) db.exec("ALTER TABLE cars ADD COLUMN trim TEXT NOT NULL DEFAULT ''");
+if (!carColumns.some(column => column.name === 'province')) db.exec("ALTER TABLE cars ADD COLUMN province TEXT NOT NULL DEFAULT ''");
+if (!carColumns.some(column => column.name === 'postal_code')) db.exec("ALTER TABLE cars ADD COLUMN postal_code TEXT NOT NULL DEFAULT ''");
 const legacyColumns:Record<string,string[]> = { cars: ['id'], rentals: ['id','car_id','vehicle_id'], expenses: ['id','car_id','vehicle_id','rental_id'], valuations: ['id','car_id','vehicle_id'] };
 for (const [table, columnsToRename] of Object.entries(legacyColumns)) {
   const columns = db.prepare(`PRAGMA table_info(${table})`).all() as {name:string}[];
@@ -50,6 +53,108 @@ for (const [table, columnsToRename] of Object.entries(legacyColumns)) {
   }
 }
 const app = express(); app.use(cors()); app.use(express.json({ limit: '15mb' }));
+const autoTraderProvinceCode:Record<string,string> = { BC: 'bc', AB: 'ab', SK: 'sk', MB: 'mb', ON: 'on', QC: 'qc', NB: 'nb', NS: 'ns', PE: 'pe', NL: 'nl' };
+const publicMarketSources = {
+  listings: 'https://www.autotrader.ca/valuations/',
+  carfax: 'https://go.carfax.ca/data-driven-valuation',
+  trend: 'https://www.canadianblackbook.com/wp-content/uploads/2026/11/CBB_MarketInsights_11032026.pdf',
+};
+const collectJsonLd = (value:any, out:any[] = []) => {
+  if (Array.isArray(value)) value.forEach((item) => collectJsonLd(item, out));
+  else if (value && typeof value === 'object') {
+    out.push(value);
+    Object.values(value).forEach((item) => collectJsonLd(item, out));
+  }
+  return out;
+};
+const median = (values:number[]) => {
+  const sorted = values.slice().sort((a,b) => a-b);
+  if (!sorted.length) return 0;
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+};
+app.get('/api/market-estimate', async (req,res) => {
+  const identification = Number(req.query.vehicle_identification);
+  const car:any = db.prepare('SELECT * FROM cars WHERE identification=?').get(identification);
+  if (!car) return res.status(404).json({ error: 'Vehicle not found' });
+  const province = String(car.province || '').trim().toUpperCase();
+  const provinceCode = autoTraderProvinceCode[province];
+  const makeModel = String(car.make_model || '').toLowerCase();
+  if (!provinceCode || !makeModel.includes('tesla') || !makeModel.includes('model y'))
+    return res.status(422).json({ error: 'Public market estimate is not available for this vehicle yet' });
+  const sourceUrl = `https://www.autotrader.ca/cars/tesla/model-y/my_${Number(car.year)}/reg_${provinceCode}/ot_used`;
+  try {
+    const response = await fetch(sourceUrl, { headers: { 'User-Agent': 'RentalLedger public market estimate' } });
+    if (!response.ok) return res.status(502).json({ error: `Public market source returned ${response.status}` });
+    const html = await response.text();
+    const listings:any[] = [];
+    for (const match of html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)) {
+      try { collectJsonLd(JSON.parse(match[1]), listings); } catch {}
+    }
+    const requestedTrim = String(car.trim || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    const comparableListings = listings
+      .filter((item) => {
+        const config = String(item.vehicleConfiguration || item.name || '').toLowerCase();
+        const price = Number(item.offers?.price);
+        const kilometres = Number(item.mileageFromOdometer?.value);
+        if (!price || !kilometres || !config.includes('model y')) return false;
+        if (!requestedTrim) return true;
+        if (requestedTrim === 'rwd') return config.includes('rwd') && !config.includes('awd');
+        return config.includes(requestedTrim);
+      })
+      .map((item) => ({
+        name: String(item.name || item.vehicleConfiguration || 'Tesla Model Y'),
+        price: Number(item.offers.price),
+        kilometres: Number(item.mileageFromOdometer.value),
+        url: String(item.offers.url || sourceUrl),
+      }))
+      .filter((item, index, all) => all.findIndex((candidate) => candidate.url === item.url) === index);
+    if (!comparableListings.length) {
+      const fallbackPattern = /"name":"([^"]*Model Y[^"]*)"[\s\S]*?"mileageFromOdometer":\{"@type":"QuantitativeValue","value":([0-9]+)[\s\S]*?"offers":\{"@type":"Offer","price":([0-9]+)/g;
+      for (const match of html.matchAll(fallbackPattern)) {
+        const config = match[1].toLowerCase();
+        const trimMatches = requestedTrim === 'rwd'
+          ? config.includes('rwd') && !config.includes('awd')
+          : !requestedTrim || config.includes(requestedTrim);
+        if (trimMatches) comparableListings.push({
+          name: match[1],
+          price: Number(match[3]),
+          kilometres: Number(match[2]),
+          url: sourceUrl,
+        });
+      }
+    }
+    if (!comparableListings.length) return res.status(404).json({ error: 'No public comparables found for this trim' });
+    const marketValue = median(comparableListings.map((item) => item.price));
+    const weeklyMarketDecline = 0.0031;
+    const annualDepreciationRate = 1 - Math.pow(1 - weeklyMarketDecline, 52);
+    const projectedValues = [1,2,3,4,5].map((years) => ({
+      years,
+      value: marketValue * Math.pow(1 - annualDepreciationRate, years),
+    }));
+    res.json({
+      marketValue,
+      annualDepreciationRate,
+      projectedValues,
+      comparableCount: comparableListings.length,
+      comparables: comparableListings,
+      asOf: new Date().toISOString(),
+      sourceUrl,
+      sourceName: 'AutoTrader Canada public listings',
+      trendSourceUrl: publicMarketSources.trend,
+      trendDescription: 'Canadian Black Book Truck/SUV market trend, annualized from a 0.31% weekly change',
+      postalCode: car.postal_code || '',
+      province,
+      referenceSources: [
+        { name: 'AutoTrader Canada', url: sourceUrl, purpose: 'Exact-trim public asking-price comparables' },
+        { name: 'CARFAX Canada', url: publicMarketSources.carfax, purpose: 'Market-based valuation reference; no free automated quote is exposed' },
+        { name: 'Canadian Black Book', url: publicMarketSources.trend, purpose: 'Canadian used truck/SUV market trend used for the depreciation scenario' },
+      ],
+    });
+  } catch (error:any) {
+    res.status(502).json({ error: `Could not read public market data: ${error.message}` });
+  }
+});
 const allowed = new Set(['cars','rentals','expenses','valuations']);
 app.get('/api/:table', (req,res) => { const t=req.params.table; if(!allowed.has(t)) return res.status(404).json({error:'Not found'}); const rows=db.prepare(`SELECT * FROM ${t} ORDER BY identification DESC`).all(); res.json(rows); });
 app.post('/api/:table', (req,res) => { const t=req.params.table; if(!allowed.has(t)) return res.status(404).json({error:'Not found'}); const body=req.body ?? {}; const cols=Object.keys(body).filter(k=>/^[a-z_]+$/.test(k)); if(!cols.length) return res.status(400).json({error:'No fields'}); try { const stmt=db.prepare(`INSERT INTO ${t} (${cols.join(',')}) VALUES (${cols.map(c=>`@${c}`).join(',')})`); const result=stmt.run(body); res.json(db.prepare(`SELECT * FROM ${t} WHERE identification=?`).get(result.lastInsertRowid)); } catch(e:any) { res.status(400).json({error:e.message}); } });

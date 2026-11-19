@@ -6,16 +6,19 @@ import {
   blankRental,
   blankExpense,
   categories,
+  money,
   num,
   today,
 } from "../../model";
 import type { Car, Rental, Expense, Valuation } from "../../model";
+import type { PublicMarketEstimate } from "../../model";
 
 export function ValuationForm({
   initial,
   cars,
   rentals = [],
   valuations = [],
+  publicEstimates = {},
   onSave,
   onCancel,
 }: {
@@ -23,6 +26,7 @@ export function ValuationForm({
   cars: Car[];
   rentals?: Rental[];
   valuations?: Valuation[];
+  publicEstimates?: Record<number, PublicMarketEstimate | null>;
   onSave: (d: any) => void;
   onCancel: () => void;
 }) {
@@ -45,6 +49,8 @@ export function ValuationForm({
       : highestKnownOdometer(initialVehicle),
   });
   const set = (k: string, v: any) => setD((p: any) => ({ ...p, [k]: v }));
+  const publicEstimate = publicEstimates[num(d.vehicle_identification)];
+  const marketValue = publicEstimate?.marketValue || num(d.market_value);
   return (
     <form
       className="form-grid"
@@ -54,7 +60,7 @@ export function ValuationForm({
           ...d,
           vehicle_identification: num(d.vehicle_identification),
           odometer_km: num(d.odometer_km),
-          market_value: num(d.market_value),
+          market_value: marketValue,
         });
       }}
     >
@@ -95,13 +101,9 @@ export function ValuationForm({
         />
       </Field>
       <Field label="Estimated market value (CAD)">
-        <input
-          type="number"
-          min="0"
-          step="0.01"
-          value={d.market_value}
-          onChange={(e) => set("market_value", e.target.value)}
-        />
+        <output className="calculated-field">
+          {publicEstimate ? money(marketValue) : "Public estimate unavailable"}
+        </output>
       </Field>
       <Field label="Notes / source of estimate" wide>
         <textarea
@@ -115,9 +117,8 @@ export function ValuationForm({
         <div className="hint-box">
           Odometer is automatically set to the highest known kilometre reading
           from this vehicle, valuation history, and rental records.
-          Enter your estimated market value here. Saving it updates the
-          vehicle's current value; the depreciation rate remains a separate
-          planning estimate.
+          The value is pulled from public comparable listings for this trim and
+          province. Saving it updates the vehicle's current-value snapshot.
         </div>
       </div>
       <div className="wide">

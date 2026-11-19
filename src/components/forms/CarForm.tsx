@@ -62,6 +62,27 @@ export function CarForm({
           onChange={(e) => set("make_model", e.target.value)}
         />
       </Field>
+      <Field label="Trim">
+        <input
+          value={d.trim || ""}
+          placeholder="e.g. Standard RWD"
+          onChange={(e) => set("trim", e.target.value)}
+        />
+      </Field>
+      <Field label="Province">
+        <input
+          value={d.province || ""}
+          placeholder="e.g. BC"
+          onChange={(e) => set("province", e.target.value.toUpperCase())}
+        />
+      </Field>
+      <Field label="Postal code">
+        <input
+          value={d.postal_code || ""}
+          placeholder="e.g. V6M 1N7"
+          onChange={(e) => set("postal_code", e.target.value.toUpperCase())}
+        />
+      </Field>
       <Field label="Model year">
         <input
           type="number"

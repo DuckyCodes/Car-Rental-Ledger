@@ -3,6 +3,9 @@ export type Car = {
   identification: number;
   name: string;
   make_model: string;
+  trim: string;
+  province: string;
+  postal_code: string;
   year: number;
   purchase_date: string;
   purchase_price: number;
@@ -80,6 +83,21 @@ export type Valuation = {
   market_value: number;
   notes: string;
 };
+export type PublicMarketEstimate = {
+  marketValue: number;
+  annualDepreciationRate: number;
+  projectedValues: { years: number; value: number }[];
+  comparableCount: number;
+  comparables: { name: string; price: number; kilometres: number; url: string }[];
+  asOf: string;
+  sourceUrl: string;
+  sourceName: string;
+  trendSourceUrl: string;
+  trendDescription: string;
+  postalCode: string;
+  province: string;
+  referenceSources: { name: string; url: string; purpose: string }[];
+};
 export type Tab =
   | "Overview"
   | "Cars"
@@ -121,6 +139,9 @@ export const monthsBetween = (start: string, end: string) => {
 export const blankCar = {
   name: "",
   make_model: "Tesla Model Y",
+  trim: "Standard RWD",
+  province: "BC",
+  postal_code: "V6M 1N7",
   year: new Date().getFullYear(),
   purchase_date: today(),
   purchase_price: 0,

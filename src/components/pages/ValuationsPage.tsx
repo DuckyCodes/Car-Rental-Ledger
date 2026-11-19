@@ -109,6 +109,7 @@ export function ValuationsPage({ context }: { context: PageContext }) {
     totalVehicleKilometres,
     depreciationDescription,
     vehicleCostSummary,
+    publicEstimates,
   } = context;
   return (
     <>
@@ -116,8 +117,8 @@ export function ValuationsPage({ context }: { context: PageContext }) {
         <div>
           <h2>Depreciation & market valuations</h2>
           <p>
-            Log periodic market values and odometer readings to compare
-            real-world value loss with your mileage estimate.
+            Current value and future depreciation now use public market
+            comparables matched to each vehicle's trim and province.
           </p>
         </div>
         <button className="secondary" onClick={() => openNew("valuation")}>
@@ -129,10 +130,10 @@ export function ValuationsPage({ context }: { context: PageContext }) {
         <div>
           <strong>Two views of depreciation</strong>
           <p>
-            Mileage-based estimate = kilometres driven × your estimated cost per
-            km. Market-value change compares the vehicle's purchase price or
-            prior valuation to a later valuation. These are management
-            estimates, not CRA CCA calculations.
+            Public market estimate = comparable Canadian asking prices matched
+            to the vehicle's model year, trim, and province. Future depreciation
+            uses the current Canadian market trend. These are market estimates,
+            not CRA CCA calculations.
           </p>
         </div>
       </div>
@@ -211,13 +212,15 @@ export function ValuationsPage({ context }: { context: PageContext }) {
             first && last && first.identification !== last.identification
               ? num(last.market_value) - num(first.market_value)
               : num(c.current_value) - num(c.purchase_price);
-          const costs = vehicleCostSummary(c);
+          const publicEstimate = publicEstimates[c.identification];
+          const marketValue = publicEstimate?.marketValue ?? num(c.current_value);
+          const displayCosts = vehicleCostSummary(c, marketValue);
           return (
             <div className="panel valuation-card" key={c.identification}>
               <span>{c.name}</span>
-              <strong>{money(c.current_value)}</strong>
+              <strong>{money(marketValue)}</strong>
               <p>
-                Current estimated value
+                Public market estimate
                 {last ? ` · updated ${last.date}` : " · no valuation history yet"}
               </p>
               <div className="valuation-bottom">
@@ -229,8 +232,8 @@ export function ValuationsPage({ context }: { context: PageContext }) {
               </div>
               <div className="valuation-bottom">
                 <span>Equity after loan</span>
-                <b className={costs.equity < 0 ? "negative" : "positive"}>
-                  {money(costs.equity)}
+                <b className={displayCosts.equity < 0 ? "negative" : "positive"}>
+                  {money(displayCosts.equity)}
                 </b>
               </div>
             </div>

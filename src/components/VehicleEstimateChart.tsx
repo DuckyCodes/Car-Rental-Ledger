@@ -10,13 +10,22 @@ import {
 import type { Car } from "../model";
 import { estimateCanadaVehicleCosts } from "../canadaVehicleEstimator";
 
-export function VehicleEstimateChart({ car }: { car: Car }) {
+export function VehicleEstimateChart({
+  car,
+  marketValue,
+  annualDepreciationRate,
+}: {
+  car: Car;
+  marketValue?: number;
+  annualDepreciationRate?: number;
+}) {
   const currentYear = new Date().getFullYear();
   const estimate = estimateCanadaVehicleCosts(car, currentYear);
-  const currentValue = Math.max(0, Number(car.current_value) || Number(car.purchase_price) || 0);
+  const currentValue = Math.max(0, Number(marketValue) || Number(car.current_value) || Number(car.purchase_price) || 0);
+  const marketDeclineRate = annualDepreciationRate ?? estimate.depreciationRate;
   const data = Array.from({ length: 7 }, (_, index) => {
     const age = estimate.ageYears + index;
-    const value = currentValue * Math.pow(1 - (age <= 3 ? 0.18 : age <= 6 ? 0.12 : age <= 10 ? 0.09 : 0.07), index);
+    const value = currentValue * Math.pow(1 - marketDeclineRate, index);
     const maintenance = Math.max(900, Number(car.purchase_price) * 0.035) *
       (1 + Math.max(0, age - 3) * 0.08);
     const repairRisk = Math.min(65, 3 + Math.max(0, age - 3) * 2.5 + Math.max(0, Number(car.odometer_km) - 80000) / 4000);

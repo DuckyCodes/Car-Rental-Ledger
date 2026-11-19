@@ -112,6 +112,7 @@ export function CarsPage({ context }: { context: PageContext }) {
     totalVehicleKilometres,
     depreciationDescription,
     vehicleCostSummary,
+    publicEstimates,
   } = context;
   return (
     <>
@@ -139,7 +140,9 @@ export function CarsPage({ context }: { context: PageContext }) {
             <article className="vehicle-card" key={c.identification}>
               {(() => {
                 const estimate = estimateCanadaVehicleCosts(c);
-                const costs = vehicleCostSummary(c);
+                const publicEstimate = publicEstimates[c.identification];
+                const marketValue = publicEstimate?.marketValue ?? num(c.current_value);
+                const costs = vehicleCostSummary(c, marketValue);
                 const loanSchedule = loanScheduleSummary(c);
                 const latestValuation = valuations
                   .filter((valuation) => valuation.vehicle_identification === c.identification)
@@ -164,8 +167,8 @@ export function CarsPage({ context }: { context: PageContext }) {
               </p>
               <div className="vehicle-stats">
                 <div>
-                  <span>Current value</span>
-                  <strong>{money(num(c.current_value))}</strong>
+                  <span>{publicEstimate ? "Public market estimate" : "Current value"}</span>
+                  <strong>{money(marketValue)}</strong>
                 </div>
                 <div>
                   <span>Odometer</span>
@@ -177,7 +180,11 @@ export function CarsPage({ context }: { context: PageContext }) {
                 </div>
                 <div>
                   <span>Depreciation estimate</span>
-                  <strong>{depreciationDescription(c)}</strong>
+                  <strong>
+                    {publicEstimate
+                      ? `${(publicEstimate.annualDepreciationRate * 100).toFixed(1)}% annual public-market trend`
+                      : depreciationDescription(c)}
+                  </strong>
                 </div>
                 <div>
                   <span>Canada baseline maintenance</span>
@@ -233,10 +240,29 @@ export function CarsPage({ context }: { context: PageContext }) {
                 <p className="cost-summary-note">
                   Cash paid includes down payment, principal and interest. Net cost also
                   accounts for what the car is worth today after the remaining loan.
-                  " Loan balance is calculated from the loan schedule and recorded principal payments."
+                  {" Loan balance is calculated from the loan schedule and recorded principal payments."}
                   {latestValuation ? ` Last valuation: ${latestValuation.date}.` : " Add a valuation to start a value history."}
                 </p>
               </div>
+              {publicEstimate && (
+                <div className="hint-box">
+                  <strong>Public market estimate</strong><br />
+                  {money(publicEstimate.marketValue)} from {publicEstimate.comparableCount} <a href={publicEstimate.sourceUrl} target="_blank" rel="noreferrer">AutoTrader Canada comparable{publicEstimate.comparableCount === 1 ? "" : "s"}</a> in {publicEstimate.province}, fetched {new Date(publicEstimate.asOf).toLocaleDateString("en-CA")}. {publicEstimate.comparableCount < 3 ? "This is a limited benchmark because there are fewer than three exact public matches." : "This uses multiple exact public matches."}
+                  Future depreciation uses the annualized Canadian Black Book truck/SUV market trend ({(publicEstimate.annualDepreciationRate * 100).toFixed(1)}%/yr), not your purchase price or manual current value.
+                  <a href={publicEstimate.trendSourceUrl} target="_blank" rel="noreferrer">View market trend source</a>
+                  <span className="source-links"> Other references: {publicEstimate.referenceSources.filter((source: { name: string }) => source.name !== "AutoTrader Canada").map((source: { name: string; url: string }) => <a key={source.name} href={source.url} target="_blank" rel="noreferrer">{source.name}</a>)}</span>
+                  <button className="text-button" onClick={() => setCalculationDetails({
+                    title: "Public market estimate",
+                    definition: "A market-based estimate from public AutoTrader Canada asking-price comparables matched to the vehicle's model year, trim, and province. Asking prices are not completed sale prices.",
+                    formula: "Current value = median matching public asking prices; future value = current value × (1 − annualized public market trend)^years",
+                    items: [
+                      { label: "Market estimate", value: money(publicEstimate.marketValue) },
+                      { label: "Comparable listings", value: String(publicEstimate.comparableCount) },
+                      { label: "Annual public trend", value: `${(publicEstimate.annualDepreciationRate * 100).toFixed(1)}%` },
+                    ],
+                  })}>View source calculation</button>
+                </div>
+              )}
               <div className="hint-box">
                 <strong>Automatic Canada estimate</strong><br />
                 Depreciation: {money(estimate.annualDepreciation)}/yr · age {estimate.ageYears} years · baseline confidence.<br />
@@ -252,7 +278,11 @@ export function CarsPage({ context }: { context: PageContext }) {
                   ],
                 })}>View calculation</button>
               </div>
-              <VehicleEstimateChart car={c} />
+              <VehicleEstimateChart
+                car={c}
+                marketValue={marketValue}
+                annualDepreciationRate={publicEstimate?.annualDepreciationRate}
+              />
               <div className="vehicle-actions">
                 <button
                   className="secondary small"

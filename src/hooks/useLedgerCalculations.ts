@@ -509,7 +509,7 @@ export function useLedgerCalculations({
         expense.treatment === "loan_principal")
     );
   };
-  const vehicleCostSummary = (c: Car) => {
+  const vehicleCostSummary = (c: Car, marketValueOverride?: number) => {
     const financeExpenses = expenses.filter(
       (expense) =>
         isVehicleFinanceExpense(c, expense) && expense.date <= today(),
@@ -551,7 +551,7 @@ export function useLedgerCalculations({
       : 0;
     const cashPaidTowardVehicle = initialCash + financePaid;
     const totalCashOutlay = cashPaidTowardVehicle + otherExpenses + insurance;
-    const equity = num(c.current_value) - loanBalance;
+    const equity = num(marketValueOverride ?? c.current_value) - loanBalance;
     return {
       initialCash,
       financePaid,

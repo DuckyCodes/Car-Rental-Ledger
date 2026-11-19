@@ -29,7 +29,7 @@ import {
   monthKey,
   API,
 } from "./model";
-import type { Car, Rental, Expense, Valuation, Tab } from "./model";
+import type { Car, Rental, Expense, Valuation, PublicMarketEstimate, Tab } from "./model";
 import { useLedgerCalculations } from "./hooks/useLedgerCalculations";
 import { download } from "./utils/download";
 import { api } from "./api";
@@ -55,6 +55,7 @@ function App() {
   const [rentals, setRentals] = useState<Rental[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [valuations, setValuations] = useState<Valuation[]>([]);
+  const [publicEstimates, setPublicEstimates] = useState<Record<number, PublicMarketEstimate | null>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [modal, setModal] = useState("");
@@ -172,6 +173,21 @@ function App() {
       setRentals(r);
       setExpenses(e);
       setValuations(v);
+      const estimates = await Promise.all(
+        c.map(async (car) => {
+          try {
+            return [
+              car.identification,
+              await api<PublicMarketEstimate>(
+                `/market-estimate?vehicle_identification=${car.identification}`,
+              ),
+            ] as const;
+          } catch {
+            return [car.identification, null] as const;
+          }
+        }),
+      );
+      setPublicEstimates(Object.fromEntries(estimates));
       setError("");
     } catch (e: any) {
       setError(e.message + " — make sure the local server is running.");
@@ -295,6 +311,7 @@ function App() {
     rentals,
     expenses,
     valuations,
+    publicEstimates,
     setTab,
     openNew,
     openEdit,
@@ -537,6 +554,7 @@ function App() {
               cars={cars}
               rentals={rentals}
               valuations={valuations}
+              publicEstimates={publicEstimates}
               onSave={async (d) => {
                 await save("valuations", d);
                 const c = cars.find(

@@ -107,6 +107,7 @@ export function OverviewMetrics({ context }: { context: PageContext }) {
     totalVehicleKilometres,
     totalDepreciation,
     depreciationDescription,
+    publicEstimates,
   } = context;
   const showCalculation = (details: {
     title: string;
@@ -272,6 +273,36 @@ export function OverviewMetrics({ context }: { context: PageContext }) {
           icon={<Wallet />}
           tone="orange"
         />
+        <div className="metric-section-heading">
+          <strong>Vehicle market value</strong>
+          <span>Automatically refreshed public-market estimate in CAD</span>
+        </div>
+        {cars.map((car: Car) => {
+          const estimate = publicEstimates?.[car.identification];
+          return (
+            <Metric
+              key={`market-${car.identification}`}
+              label={`${car.name || `${car.make_model} ${car.year || ""}`}`.trim()}
+              value={estimate ? money(estimate.marketValue) : "Unavailable"}
+              hint={estimate
+                ? `${estimate.comparableCount} exact public comparable${estimate.comparableCount === 1 ? "" : "s"} · ${(estimate.annualDepreciationRate * 100).toFixed(1)}% annual trend`
+                : "Public match not available yet"}
+              icon={<CarFront />}
+              tone="blue"
+              onInfo={estimate ? () => showCalculation({
+                title: `${car.name || car.make_model} market estimate`,
+                definition: "A rough estimate refreshed from public Canadian asking-price comparables matched to the vehicle year, trim, and province. It is not a completed-sale price or a lender payoff quote.",
+                formula: "Current estimate = median exact public asking prices; future value = estimate × (1 − public annual trend)^years",
+                items: [
+                  { label: "Estimated market value", value: money(estimate.marketValue) },
+                  { label: "Exact public comparables", value: String(estimate.comparableCount) },
+                  { label: "Estimate date", value: new Date(estimate.asOf).toLocaleDateString("en-CA") },
+                  { label: "Future trend", value: `${(estimate.annualDepreciationRate * 100).toFixed(1)}% annually` },
+                ],
+              }) : undefined}
+            />
+          );
+        })}
         <div className="metric-section-heading">
           <strong>Booking performance</strong>
           <span>Revenue, distance, and rental-day averages</span>
