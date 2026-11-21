@@ -62,6 +62,23 @@ export type Rental = {
   deposit_returned: number;
   notes: string;
 };
+export type VehiclePerformance = {
+  car: Car;
+  bookings: number;
+  revenue: number;
+  operatingCosts: number;
+  principal: number;
+  cashFlow: number;
+  rentalKm: number;
+  rentalDays: number;
+  currentOdometer: number;
+  depreciation: number;
+  estimatedProfit: number;
+  profitMargin: number;
+  utilization: number;
+  averageRevenuePerDay: number;
+  revenuePerKilometre: number;
+};
 export type Expense = {
   identification: number;
   vehicle_identification: number | null;

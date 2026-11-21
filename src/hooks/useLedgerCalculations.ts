@@ -813,6 +813,132 @@ export function useLedgerCalculations({
   // Cash flow is a booking forecast for the selected period: include active
   // and future bookings alongside the cash expenses allocated to that period.
   const cashFlow = revenue - cashExpenses;
+  const performancePeriodStart =
+    month === "all"
+      ? monthRentals.map((r) => r.start_date).sort()[0] || today()
+      : `${month}-01`;
+  const performancePeriodEnd =
+    month === "all"
+      ? today()
+      : new Date(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0)
+          .toISOString()
+          .slice(0, 10);
+  const performancePeriodDays = Math.max(
+    1,
+    Math.floor(
+      (new Date(`${performancePeriodEnd}T12:00:00`).getTime() -
+        new Date(`${performancePeriodStart}T12:00:00`).getTime()) /
+        86400000,
+    ) + 1,
+  );
+  const vehiclePerformanceFor = (car: Car) => {
+    const carRentals = monthRentals.filter(
+      (rental) => rental.vehicle_identification === car.identification,
+    );
+    const carExpenses = expenses.filter(
+      (expense) =>
+        expense.vehicle_identification === car.identification &&
+        expenseIncludedInPeriod(expense, month) &&
+        (month === "all" || expenseAppliesToMonth(expense, month)),
+    );
+    const loan =
+      month === "all"
+        ? automaticLoanBreakdownThroughToday(car)
+        : automaticLoanBreakdownForMonth(car, month);
+    const insurance =
+      month === "all"
+        ? insuranceCostThroughToday(car)
+        : insuranceCostForMonth(car, month);
+    const manualPrincipal = carExpenses
+      .filter(isManualPrincipalEntry)
+      .reduce(
+        (sum, expense) =>
+          sum + expenseAmountForPeriod(expense, calculationPeriod),
+        0,
+      );
+    const manualInterest = carExpenses
+      .filter(isManualInterestEntry)
+      .reduce(
+        (sum, expense) =>
+          sum + expenseAmountForPeriod(expense, calculationPeriod),
+        0,
+      );
+    const isOperatingExpense = (expense: Expense) =>
+      expense.treatment !== "loan_principal" &&
+      !isManualFinanceEntry(expense) &&
+      !(
+        expense.category.startsWith("Insurance") &&
+        insuranceConfigured(expense.vehicle_identification)
+      );
+    const otherOperatingCosts = carExpenses
+      .filter(isOperatingExpense)
+      .reduce(
+        (sum, expense) =>
+          sum + expenseAmountForPeriod(expense, calculationPeriod),
+        0,
+      );
+    const revenue = carRentals.reduce(
+      (sum, rental) => sum + rentalRevenue(rental),
+      0,
+    );
+    const operatingCosts =
+      loan.interest +
+      manualInterest +
+      otherOperatingCosts +
+      insurance +
+      carRentals.reduce(
+        (sum, rental) => sum + rentalPlatformCosts(rental),
+        0,
+      );
+    const principal = carExpenses
+      .filter(
+        (expense) =>
+          expense.treatment === "loan_principal" &&
+          !isManualFinanceEntry(expense),
+      )
+      .reduce(
+        (sum, expense) =>
+          sum + expenseAmountForPeriod(expense, calculationPeriod),
+        loan.principal + manualPrincipal,
+      );
+    const rentalDays = carRentals.reduce(
+      (sum, rental) =>
+        sum +
+        (month === "all"
+          ? dateDiff(rental.start_date, rental.end_date)
+          : rentalDaysInMonth(rental, month)),
+      0,
+    );
+    const rentalKm = carRentals.reduce(
+      (sum, rental) => sum + rentalDistance(rental),
+      0,
+    );
+    const depreciation =
+      month === "all" && car.depreciation_model === "mileage"
+        ? totalVehicleKilometres(car) * num(car.depreciation_per_km)
+        : carRentals.reduce(
+            (sum, rental) => sum + rentalDepreciation(rental),
+            0,
+          );
+    const estimatedProfit = revenue - operatingCosts - depreciation;
+    return {
+      car,
+      bookings: carRentals.length,
+      revenue,
+      operatingCosts,
+      principal,
+      cashFlow: revenue - operatingCosts - principal,
+      rentalKm,
+      rentalDays,
+      currentOdometer: totalVehicleKilometres(car),
+      depreciation,
+      estimatedProfit,
+      profitMargin: revenue > 0 ? (estimatedProfit / revenue) * 100 : 0,
+      utilization: (rentalDays / performancePeriodDays) * 100,
+      averageRevenuePerDay: rentalDays ? revenue / rentalDays : 0,
+      revenuePerKilometre: rentalKm ? revenue / rentalKm : 0,
+    };
+  };
   const chartData = useMemo(() => {
     const allDates = [
       ...cars.map((c) => c.purchase_date).filter(Boolean),
@@ -967,6 +1093,7 @@ export function useLedgerCalculations({
     cashProfitBeforePrincipal,
     profit,
     cashFlow,
+    vehiclePerformanceFor,
     chartData,
     depreciationCar,
     depreciationChartData,

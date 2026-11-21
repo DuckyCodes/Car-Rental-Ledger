@@ -29,6 +29,7 @@ import { today, money, num, API } from "../../../../model";
 import type { Car, Rental, Expense, Valuation } from "../../../../model";
 import { getOverviewPeriod, getAvailableExpenseMonths } from "../overviewCalculations";
 import type { PageContext } from '../OverviewTypes';
+import { VehiclePerformanceTable } from "../../../reports/VehiclePerformanceTable";
 
 export function OverviewVisuals({ context }: { context: PageContext }) {
   const {
@@ -103,6 +104,7 @@ export function OverviewVisuals({ context }: { context: PageContext }) {
     totalDepreciation,
     depreciationDescription,
     publicEstimates,
+    vehiclePerformanceFor,
   } = context;
   const showCalculation = (details: {
     title: string;
@@ -259,6 +261,22 @@ export function OverviewVisuals({ context }: { context: PageContext }) {
           </div>
         </section>
       </div>
+      <section className="panel vehicle-performance-panel">
+        <div className="panel-heading">
+          <div>
+            <h3>Individual vehicle performance</h3>
+            <p>Compare each vehicle's bookings, utilization, revenue, and estimated profit for this period.</p>
+          </div>
+          <button className="text-button" onClick={() => setTab("Reports")}>
+            Open detailed report <ArrowUpRight size={14} />
+          </button>
+        </div>
+        <VehiclePerformanceTable
+          cars={cars}
+          vehiclePerformanceFor={vehiclePerformanceFor}
+          showCalculation={showCalculation}
+        />
+      </section>
       <div className="bottom-grid">
         <section className="panel">
           <div className="panel-heading">
