@@ -881,6 +881,13 @@ export function useLedgerCalculations({
       (sum, rental) => sum + rentalRevenue(rental),
       0,
     );
+    const completedRentals = carRentals.filter(
+      (rental) => rental.end_date <= today(),
+    );
+    const completedRevenue = completedRentals.reduce(
+      (sum, rental) => sum + rentalRevenue(rental),
+      0,
+    );
     const operatingCosts =
       loan.interest +
       manualInterest +
@@ -913,30 +920,111 @@ export function useLedgerCalculations({
       (sum, rental) => sum + rentalDistance(rental),
       0,
     );
-    const depreciation =
-      month === "all" && car.depreciation_model === "mileage"
-        ? totalVehicleKilometres(car) * num(car.depreciation_per_km)
-        : carRentals.reduce(
-            (sum, rental) => sum + rentalDepreciation(rental),
-            0,
-          );
-    const estimatedProfit = revenue - operatingCosts - depreciation;
+    const completedRentalDays = completedRentals.reduce(
+      (sum, rental) =>
+        sum +
+        (month === "all"
+          ? dateDiff(rental.start_date, rental.end_date)
+          : rentalDaysInMonth(rental, month)),
+      0,
+    );
+    const distanceTrackedRentals = carRentals.filter(
+      (rental) => rentalDistance(rental) > 0,
+    );
+    const distanceTrackedKilometres = distanceTrackedRentals.reduce(
+      (sum, rental) => sum + rentalDistance(rental),
+      0,
+    );
+    const distanceTrackedRentalDays = distanceTrackedRentals.reduce(
+      (sum, rental) => sum + dateDiff(rental.start_date, rental.end_date),
+      0,
+    );
+    const revenueTrackedRentals = carRentals.filter(
+      (rental) => rentalRevenue(rental) > 0,
+    );
+    const revenueTrackedTotal = revenueTrackedRentals.reduce(
+      (sum, rental) => sum + rentalRevenue(rental),
+      0,
+    );
+    const revenueTrackedDays = revenueTrackedRentals.reduce(
+      (sum, rental) => sum + dateDiff(rental.start_date, rental.end_date),
+      0,
+    );
+    const distanceTrackedRevenue = distanceTrackedRentals.reduce(
+      (sum, rental) => sum + rentalRevenue(rental),
+      0,
+    );
+    const depreciation = carRentals.reduce(
+      (sum, rental) => sum + rentalDepreciation(rental),
+      0,
+    );
+    const completedDepreciation = completedRentals.reduce(
+      (sum, rental) => sum + rentalDepreciation(rental),
+      0,
+    );
+    const operatingProfit = revenue - operatingCosts;
+    const completedOperatingProfit = completedRevenue - operatingCosts;
+    const cashExpenses = operatingCosts + principal;
+    const completedCashFlow = completedRevenue - cashExpenses;
+    const estimatedProfit = operatingProfit - depreciation;
+    const currentLoanBalance = loanBalance(car);
     return {
       car,
       bookings: carRentals.length,
       revenue,
+      completedRevenue,
       operatingCosts,
+      operatingProfit,
+      operatingMargin: revenue > 0 ? (operatingProfit / revenue) * 100 : 0,
+      completedOperatingProfit,
+      completedOperatingMargin:
+        completedRevenue > 0
+          ? (completedOperatingProfit / completedRevenue) * 100
+          : 0,
+      cashExpenses,
       principal,
-      cashFlow: revenue - operatingCosts - principal,
+      principalPaid: Math.max(
+        0,
+        Math.max(0, num(car.loan_original_amount)) - currentLoanBalance,
+      ),
+      loanBalance: currentLoanBalance,
+      remainingLoanPayments: loanRemainingPayments(car),
+      cashFlow: revenue - cashExpenses,
+      cashFlowMargin:
+        revenue > 0 ? ((revenue - cashExpenses) / revenue) * 100 : 0,
+      completedCashFlow,
+      completedCashFlowMargin:
+        completedRevenue > 0 ? (completedCashFlow / completedRevenue) * 100 : 0,
       rentalKm,
       rentalDays,
+      completedRentalDays,
+      bookedDaysPercentage: (rentalDays / performancePeriodDays) * 100,
+      averageRentalRevenue: revenueTrackedRentals.length
+        ? revenueTrackedTotal / revenueTrackedRentals.length
+        : 0,
+      averageKilometres: distanceTrackedRentals.length
+        ? distanceTrackedKilometres / distanceTrackedRentals.length
+        : 0,
+      averageRevenuePerRentalDay: revenueTrackedDays
+        ? revenueTrackedTotal / revenueTrackedDays
+        : 0,
+      averageDailyKilometres: distanceTrackedRentalDays
+        ? distanceTrackedKilometres / distanceTrackedRentalDays
+        : 0,
+      averageBookingLength: revenueTrackedRentals.length
+        ? revenueTrackedDays / revenueTrackedRentals.length
+        : 0,
+      revenuePerKilometre: distanceTrackedKilometres
+        ? distanceTrackedRevenue / distanceTrackedKilometres
+        : 0,
       currentOdometer: totalVehicleKilometres(car),
       depreciation,
+      completedDepreciation,
+      completedNetIncome: completedOperatingProfit - completedDepreciation,
       estimatedProfit,
       profitMargin: revenue > 0 ? (estimatedProfit / revenue) * 100 : 0,
       utilization: (rentalDays / performancePeriodDays) * 100,
       averageRevenuePerDay: rentalDays ? revenue / rentalDays : 0,
-      revenuePerKilometre: rentalKm ? revenue / rentalKm : 0,
     };
   };
   const chartData = useMemo(() => {

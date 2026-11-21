@@ -1,6 +1,7 @@
 import { Metric, Empty } from "../Ui";
 import { VehicleReportTable } from "../reports/VehicleReportTable";
 import { VehiclePerformanceTable } from "../reports/VehiclePerformanceTable";
+import { VehicleProfitabilityBreakdown } from "../reports/VehicleProfitabilityBreakdown";
 import {
   Activity,
   ArrowDownToLine,
@@ -625,7 +626,15 @@ export function ReportsPage({ context }: { context: PageContext }) {
       </div>
       <div className="panel report-panel">
         <h3>Individual vehicle performance</h3>
-        <p>Compare revenue, utilization, costs, and estimated profit for every vehicle in the selected period.</p>
+        <p>Full profitability, cash flow, loan, booking, distance, and margin metrics for every vehicle in the selected period.</p>
+        <VehicleProfitabilityBreakdown
+          cars={cars}
+          vehiclePerformanceFor={vehiclePerformanceFor}
+        />
+      </div>
+      <div className="panel report-panel">
+        <h3>Vehicle performance summary</h3>
+        <p>Compare the most important performance metrics side by side.</p>
         <VehiclePerformanceTable
           cars={cars}
           vehiclePerformanceFor={vehiclePerformanceFor}
