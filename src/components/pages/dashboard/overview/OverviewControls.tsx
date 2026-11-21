@@ -2,7 +2,17 @@ import { today } from "../../../../model";
 import type { PageContext } from "../OverviewTypes";
 
 export function OverviewControls({ context }: { context: PageContext }) {
-  const { month, allTimeBasis, setAllTimeBasis, setMonth, expenses, rentals } = context;
+  const {
+    month,
+    allTimeBasis,
+    setAllTimeBasis,
+    setMonth,
+    expenses,
+    rentals,
+    cars,
+    vehicleFilter,
+    setVehicleFilter,
+  } = context;
   const availableMonths = Array.from(new Set([
     ...expenses.map((expense: any) => String(expense.date || "").slice(0, 7)),
     ...rentals.flatMap((rental: any) => {
@@ -16,6 +26,10 @@ export function OverviewControls({ context }: { context: PageContext }) {
   return <div className="toolbar">
     <div><h2>At a glance</h2><p>Track revenue, spending and vehicle economics.</p></div>
     <div className="period-controls">
+      <select aria-label="Performance vehicle" value={vehicleFilter} onChange={(event) => setVehicleFilter(event.target.value)}>
+        <option value="all">All vehicles</option>
+        {cars.map((car: any) => <option key={car.identification} value={car.identification}>{car.name || `${car.make_model} ${car.year || ""}`.trim()}</option>)}
+      </select>
       <select value={month} onChange={(event) => setMonth(event.target.value)}>
         <option value={today().slice(0, 7)}>This month</option>
         <option value={new Date(Date.now() - 86400000 * 30).toISOString().slice(0, 7)}>Previous month</option>

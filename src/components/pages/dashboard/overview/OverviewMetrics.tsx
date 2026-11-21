@@ -108,6 +108,7 @@ export function OverviewMetrics({ context }: { context: PageContext }) {
     totalDepreciation,
     depreciationDescription,
     publicEstimates,
+    performanceCars,
   } = context;
   const showCalculation = (details: {
     title: string;
@@ -127,8 +128,8 @@ export function OverviewMetrics({ context }: { context: PageContext }) {
   const principalPaid = totalLoanPrincipalPaid;
   const cashFlowDetails = cashFlowMetricDetails({ revenue, cashExpenses, cashFlow, principal });
   const { periodStart, periodEnd, completedRentalDays, periodDays } = getOverviewPeriod(month, monthRentals);
-  const bookedDaysPercentage = cars.length
-    ? (rentalDays / (periodDays * cars.length)) * 100
+  const bookedDaysPercentage = performanceCars.length
+    ? (rentalDays / (periodDays * performanceCars.length)) * 100
     : 0;
   return (
       <div className="metrics">
@@ -277,7 +278,7 @@ export function OverviewMetrics({ context }: { context: PageContext }) {
           <strong>Vehicle market value</strong>
           <span>Automatically refreshed public-market estimate in CAD</span>
         </div>
-        {cars.map((car: Car) => {
+        {performanceCars.map((car: Car) => {
           const estimate = publicEstimates?.[car.identification];
           return (
             <Metric
@@ -350,7 +351,7 @@ export function OverviewMetrics({ context }: { context: PageContext }) {
         <Metric
           label="Booked rental days"
           value={`${bookedDaysPercentage.toFixed(1)}%`}
-          hint={`${rentalDays} of ${periodDays * cars.length} available fleet days`}
+          hint={`${rentalDays} of ${periodDays * performanceCars.length} available vehicle days`}
           icon={<Gauge />}
           tone="purple"
           onInfo={() =>
@@ -360,7 +361,7 @@ export function OverviewMetrics({ context }: { context: PageContext }) {
               formula: "Booked rental days ÷ (period days × vehicles) × 100",
               items: [
                 { label: "Booked rental days", value: `${rentalDays}` },
-                { label: "Available fleet days", value: `${periodDays * cars.length}` },
+                { label: "Available vehicle days", value: `${periodDays * performanceCars.length}` },
                 { label: "Booked rental days", value: `${bookedDaysPercentage.toFixed(1)}%` },
               ],
             })

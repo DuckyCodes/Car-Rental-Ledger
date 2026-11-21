@@ -47,6 +47,8 @@ export function ReportsPage({ context }: { context: PageContext }) {
   const {
     month,
     allTimeBasis,
+    vehicleFilter,
+    setVehicleFilter,
     setAllTimeBasis,
     monthRentals,
     chartData,
@@ -116,6 +118,7 @@ export function ReportsPage({ context }: { context: PageContext }) {
     insuranceConfigured,
     totalVehicleKilometres,
     depreciationDescription,
+    performanceCars,
     vehiclePerformanceFor,
   } = context;
   const showCalculation = (details: {
@@ -156,7 +159,7 @@ export function ReportsPage({ context }: { context: PageContext }) {
       return total + Math.max(0, Math.floor((new Date(`${end}T12:00:00`).getTime() - new Date(`${start}T12:00:00`).getTime()) / 86400000));
     }, 0);
   const periodDays = Math.max(1, Math.floor((new Date(`${periodEnd}T12:00:00`).getTime() - new Date(`${periodStart}T12:00:00`).getTime()) / 86400000) + 1);
-  const bookedDaysPercentage = cars.length ? (rentalDays / (periodDays * cars.length)) * 100 : 0;
+  const bookedDaysPercentage = performanceCars.length ? (rentalDays / (periodDays * performanceCars.length)) * 100 : 0;
   const availableMonths = Array.from(
     new Set([
       ...expenses.map((expense) => monthKey(expense.date)),
@@ -175,6 +178,10 @@ export function ReportsPage({ context }: { context: PageContext }) {
         </div>
         <div className="period-controls">
           <button className="secondary" onClick={() => setTab("Hypotheticals")}>Open hypotheticals</button>
+          <select aria-label="Performance vehicle" value={vehicleFilter} onChange={(event) => setVehicleFilter(event.target.value)}>
+            <option value="all">All vehicles</option>
+            {cars.map((car) => <option key={car.identification} value={car.identification}>{car.name || `${car.make_model} ${car.year || ""}`.trim()}</option>)}
+          </select>
           <select value={month} onChange={(e) => setMonth(e.target.value)}>
             <option value="all">All time</option>
             {availableMonths.map((m) => (
@@ -365,7 +372,7 @@ export function ReportsPage({ context }: { context: PageContext }) {
         <Metric
           label="Booked rental days"
           value={`${bookedDaysPercentage.toFixed(1)}%`}
-          hint={`${rentalDays} of ${periodDays * cars.length} available fleet days`}
+          hint={`${rentalDays} of ${periodDays * performanceCars.length} available vehicle days`}
           icon={<Gauge />}
           tone="purple"
           onInfo={() =>
@@ -375,7 +382,7 @@ export function ReportsPage({ context }: { context: PageContext }) {
               formula: "Booked rental days ÷ (period days × vehicles) × 100",
               items: [
                 { label: "Booked rental days", value: `${rentalDays}` },
-                { label: "Available fleet days", value: `${periodDays * cars.length}` },
+                { label: "Available vehicle days", value: `${periodDays * performanceCars.length}` },
                 { label: "Booked rental days", value: `${bookedDaysPercentage.toFixed(1)}%` },
               ],
             })
@@ -628,7 +635,7 @@ export function ReportsPage({ context }: { context: PageContext }) {
         <h3>Individual vehicle performance</h3>
         <p>Full profitability, cash flow, loan, booking, distance, and margin metrics for every vehicle in the selected period.</p>
         <VehicleProfitabilityBreakdown
-          cars={cars}
+          cars={performanceCars}
           vehiclePerformanceFor={vehiclePerformanceFor}
         />
       </div>
@@ -636,13 +643,13 @@ export function ReportsPage({ context }: { context: PageContext }) {
         <h3>Vehicle performance summary</h3>
         <p>Compare the most important performance metrics side by side.</p>
         <VehiclePerformanceTable
-          cars={cars}
+          cars={performanceCars}
           vehiclePerformanceFor={vehiclePerformanceFor}
           showCalculation={showCalculation}
         />
       </div>
       <VehicleReportTable
-        cars={cars}
+        cars={performanceCars}
         rentals={monthRentals}
         expenses={expenses}
         month={month}

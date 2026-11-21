@@ -104,6 +104,7 @@ export function OverviewVisuals({ context }: { context: PageContext }) {
     totalDepreciation,
     depreciationDescription,
     publicEstimates,
+    performanceCars,
     vehiclePerformanceFor,
   } = context;
   const showCalculation = (details: {
@@ -116,8 +117,8 @@ export function OverviewVisuals({ context }: { context: PageContext }) {
   const operatingMargin = revenue > 0 ? (operatingProfit / revenue) * 100 : 0;
   const cashFlowMargin = revenue > 0 ? (cashFlow / revenue) * 100 : 0;
   const { periodStart, periodEnd, completedRentalDays, periodDays } = getOverviewPeriod(month, monthRentals);
-  const bookedDaysPercentage = cars.length
-    ? (rentalDays / (periodDays * cars.length)) * 100
+  const bookedDaysPercentage = performanceCars.length
+    ? (rentalDays / (periodDays * performanceCars.length)) * 100
     : 0;
   return (
     <>
@@ -272,7 +273,7 @@ export function OverviewVisuals({ context }: { context: PageContext }) {
           </button>
         </div>
         <VehiclePerformanceTable
-          cars={cars}
+          cars={performanceCars}
           vehiclePerformanceFor={vehiclePerformanceFor}
           showCalculation={showCalculation}
         />

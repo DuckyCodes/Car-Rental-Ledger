@@ -64,6 +64,7 @@ function App() {
   const [month, setMonth] = useState(today().slice(0, 7));
   const [allTimeBasis, setAllTimeBasis] = useState<"full-month" | "through-today">("full-month");
   const [carFilter, setCarFilter] = useState("all");
+  const [vehicleFilter, setVehicleFilter] = useState("all");
   const [calculationDetails, setCalculationDetails] = useState<{
     title: string;
     definition: string;
@@ -146,6 +147,7 @@ function App() {
     cashProfitBeforePrincipal,
     profit,
     cashFlow,
+    performanceCars,
     vehiclePerformanceFor,
     chartData,
     depreciationCar,
@@ -157,6 +159,7 @@ function App() {
     valuations,
     month,
     allTimeBasis,
+    vehicleFilter,
     search,
     carFilter,
     depreciationCarIdentification,
@@ -303,6 +306,8 @@ function App() {
   const pageContext = {
     month,
     allTimeBasis,
+    vehicleFilter,
+    setVehicleFilter,
     setAllTimeBasis,
     setMonth,
     monthRentals,
@@ -360,6 +365,7 @@ function App() {
     cashProfitBeforePrincipal,
     profit,
     cashFlow,
+    performanceCars,
     vehiclePerformanceFor,
     principal,
     monthKm,

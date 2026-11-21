@@ -12,6 +12,7 @@ type Inputs = {
   allTimeBasis: "full-month" | "through-today";
   search: string;
   carFilter: string;
+  vehicleFilter: string;
   depreciationCarIdentification: number;
 };
 
@@ -24,8 +25,25 @@ export function useLedgerCalculations({
   allTimeBasis,
   search,
   carFilter,
+  vehicleFilter,
   depreciationCarIdentification,
 }: Inputs) {
+  const performanceCars =
+    vehicleFilter === "all"
+      ? cars
+      : cars.filter((car) => String(car.identification) === vehicleFilter);
+  const performanceRentals =
+    vehicleFilter === "all"
+      ? rentals
+      : rentals.filter(
+          (rental) => String(rental.vehicle_identification) === vehicleFilter,
+        );
+  const performanceExpenses =
+    vehicleFilter === "all"
+      ? expenses
+      : expenses.filter(
+          (expense) => String(expense.vehicle_identification) === vehicleFilter,
+        );
   const allTimeEndMonth = today().slice(0, 7);
   const currentMonthFraction =
     new Date(today() + "T12:00:00").getDate() /
@@ -366,8 +384,8 @@ export function useLedgerCalculations({
       original - loanBreakdownThroughMonth(c, monthKey(today())).principal,
     );
   };
-  const totalLoanBalance = cars.reduce((sum, car) => sum + loanBalance(car), 0);
-  const totalOriginalLoan = cars.reduce((sum, car) => sum + Math.max(0, num(car.loan_original_amount)), 0);
+  const totalLoanBalance = performanceCars.reduce((sum, car) => sum + loanBalance(car), 0);
+  const totalOriginalLoan = performanceCars.reduce((sum, car) => sum + Math.max(0, num(car.loan_original_amount)), 0);
   const totalLoanPrincipalPaid = Math.max(0, totalOriginalLoan - totalLoanBalance);
   const loanRemainingPayments = (c: Car) => {
     const original = num(c.loan_original_amount);
@@ -392,7 +410,7 @@ export function useLedgerCalculations({
     }
     return total;
   };
-  const totalLoanRemainingPayments = cars.reduce((sum, car) => sum + loanRemainingPayments(car), 0);
+  const totalLoanRemainingPayments = performanceCars.reduce((sum, car) => sum + loanRemainingPayments(car), 0);
   const isManualFinanceRecord = (expense: Expense) => {
     const c = cars.find(
       (vehicle) => vehicle.identification === expense.vehicle_identification,
@@ -595,7 +613,7 @@ export function useLedgerCalculations({
   };
   const visibleExpenses = useMemo(
     () =>
-      expenses
+      performanceExpenses
         .filter(
           (e) =>
             expenseIncludedInPeriod(e, month) &&
@@ -607,9 +625,9 @@ export function useLedgerCalculations({
               .includes(search.toLowerCase()),
         )
         .sort((first, second) => second.date.localeCompare(first.date)),
-    [expenses, month, carFilter, search, cars],
+    [performanceExpenses, month, carFilter, search, cars],
   );
-  const monthRentals = rentals.filter(
+  const monthRentals = performanceRentals.filter(
     (r) =>
       month === "all" ||
       (r.start_date <= month + "-31" && r.end_date >= month + "-01"),
@@ -632,21 +650,35 @@ export function useLedgerCalculations({
   );
   const automaticInsurance =
     month === "all"
-      ? automaticInsuranceThroughToday
-      : cars.reduce((sum, c) => sum + insuranceCostForMonth(c, month), 0);
+      ? performanceCars.reduce(
+          (sum, car) => sum + insuranceCostThroughToday(car),
+          0,
+        )
+      : performanceCars.reduce(
+          (sum, car) => sum + insuranceCostForMonth(car, month),
+          0,
+        );
+  const selectedAutomaticLoan = performanceCars.reduce(
+    (total, car) => {
+      const part =
+        month === "all"
+          ? automaticLoanBreakdownThroughToday(car)
+          : automaticLoanBreakdownForMonth(car, month);
+      return {
+        payment: total.payment + part.payment,
+        principal: total.principal + part.principal,
+        interest: total.interest + part.interest,
+      };
+    },
+    { payment: 0, principal: 0, interest: 0 },
+  );
   const automaticFinance =
-    month === "all"
-      ? automaticFinanceThroughToday
-      : automaticFinanceForMonth(month);
+    selectedAutomaticLoan.payment;
   const automaticPrincipal =
-    month === "all"
-      ? automaticPrincipalThroughToday
-      : automaticPrincipalForMonth(month);
+    selectedAutomaticLoan.principal;
   const automaticInterest =
-    month === "all"
-      ? automaticInterestThroughToday
-      : automaticInterestForMonth(month);
-  const manualFinancePrincipal = expenses
+    selectedAutomaticLoan.interest;
+  const manualFinancePrincipal = performanceExpenses
     .filter(
       (e) =>
         isManualPrincipalEntry(e) &&
@@ -654,7 +686,7 @@ export function useLedgerCalculations({
         (month === "all" || financeExpenseAppliesToMonth(e, month)),
     )
     .reduce((s, e) => s + expenseAmountForPeriod(e, calculationPeriod), 0);
-  const manualFinanceInterest = expenses
+  const manualFinanceInterest = performanceExpenses
     .filter(
       (e) =>
         isManualInterestEntry(e) &&
@@ -662,7 +694,7 @@ export function useLedgerCalculations({
         (month === "all" || financeExpenseAppliesToMonth(e, month)),
     )
     .reduce((s, e) => s + expenseAmountForPeriod(e, calculationPeriod), 0);
-  const monthExpenses = expenses
+  const monthExpenses = performanceExpenses
     .filter(
       (e) =>
         expenseIncludedInPeriod(e, month) &&
@@ -681,7 +713,7 @@ export function useLedgerCalculations({
         automaticInterest +
         manualFinanceInterest,
     );
-  const otherCashExpenses = expenses
+  const otherCashExpenses = performanceExpenses
     .filter(
       (e) =>
         expenseIncludedInPeriod(e, month) &&
@@ -693,7 +725,7 @@ export function useLedgerCalculations({
         ),
     )
     .reduce((s, e) => s + expenseAmountForPeriod(e, calculationPeriod), 0);
-  const otherCashExpenseItems = expenses
+  const otherCashExpenseItems = performanceExpenses
     .filter(
       (e) =>
         expenseIncludedInPeriod(e, month) &&
@@ -712,7 +744,7 @@ export function useLedgerCalculations({
       else items.push({ label, value: amount });
       return items;
     }, [] as { label: string; value: number }[]);
-  const manualFinance = expenses
+  const manualFinance = performanceExpenses
     .filter(
       (e) =>
         isManualFinanceEntry(e) &&
@@ -737,7 +769,7 @@ export function useLedgerCalculations({
         : []),
     ],
   };
-  const principal = expenses
+  const principal = performanceExpenses
     .filter(
       (e) =>
         expenseIncludedInPeriod(e, month) &&
@@ -835,7 +867,7 @@ export function useLedgerCalculations({
     const carRentals = monthRentals.filter(
       (rental) => rental.vehicle_identification === car.identification,
     );
-    const carExpenses = expenses.filter(
+    const carExpenses = performanceExpenses.filter(
       (expense) =>
         expense.vehicle_identification === car.identification &&
         expenseIncludedInPeriod(expense, month) &&
@@ -1029,9 +1061,9 @@ export function useLedgerCalculations({
   };
   const chartData = useMemo(() => {
     const allDates = [
-      ...cars.map((c) => c.purchase_date).filter(Boolean),
-      ...rentals.flatMap((r) => [r.start_date, r.end_date]),
-      ...expenses
+      ...performanceCars.map((c) => c.purchase_date).filter(Boolean),
+      ...performanceRentals.flatMap((r) => [r.start_date, r.end_date]),
+      ...performanceExpenses
         .filter((e) => !e.recurring_monthly)
         .map((e) => e.date),
       today(),
@@ -1057,11 +1089,11 @@ export function useLedgerCalculations({
     return dates.map((date) => {
       const key = monthKey(date);
       const days = daysInMonth(key);
-      const rs = rentals.filter(
+      const rs = performanceRentals.filter(
         (r) => r.end_date === date && r.end_date <= today(),
       );
       const inc = rs.reduce((s, r) => s + rentalRevenue(r), 0);
-      const recordedCosts = expenses
+      const recordedCosts = performanceExpenses
         .filter(
           (e) =>
             expenseAppliesToMonth(e, key) &&
@@ -1077,8 +1109,11 @@ export function useLedgerCalculations({
           0,
         );
       const automaticCosts =
-        (cars.reduce((s, c) => s + insuranceCostForMonth(c, key), 0) +
-          automaticInterestForMonth(key)) /
+        (performanceCars.reduce((s, c) => s + insuranceCostForMonth(c, key), 0) +
+          performanceCars.reduce(
+            (s, c) => s + automaticLoanBreakdownForMonth(c, key).interest,
+            0,
+          )) /
         days;
       const cost =
         recordedCosts +
@@ -1096,16 +1131,17 @@ export function useLedgerCalculations({
         costs: Math.round(cost),
       };
     });
-  }, [rentals, expenses, cars, month]);
+  }, [performanceRentals, performanceExpenses, performanceCars, month]);
   const depreciationCar =
-    cars.find((c) => c.identification === depreciationCarIdentification) ||
-    cars[0];
+    performanceCars.find((c) => c.identification === depreciationCarIdentification) ||
+    performanceCars[0];
   const depreciationChartData = useDepreciationChartData(
     depreciationCar,
     valuations,
     decliningBalanceValue,
   );
   return {
+    performanceCars,
     carName,
     rentalGrossRevenue,
     rentalRevenue,
