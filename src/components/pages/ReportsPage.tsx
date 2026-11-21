@@ -1,5 +1,6 @@
 import { Metric, Empty } from "../Ui";
 import { VehicleReportTable } from "../reports/VehicleReportTable";
+import { VehiclePerformanceTable } from "../reports/VehiclePerformanceTable";
 import {
   Activity,
   ArrowDownToLine,
@@ -114,6 +115,7 @@ export function ReportsPage({ context }: { context: PageContext }) {
     insuranceConfigured,
     totalVehicleKilometres,
     depreciationDescription,
+    vehiclePerformanceFor,
   } = context;
   const showCalculation = (details: {
     title: string;
@@ -619,6 +621,15 @@ export function ReportsPage({ context }: { context: PageContext }) {
               ],
             })
           }
+        />
+      </div>
+      <div className="panel report-panel">
+        <h3>Individual vehicle performance</h3>
+        <p>Compare revenue, utilization, costs, and estimated profit for every vehicle in the selected period.</p>
+        <VehiclePerformanceTable
+          cars={cars}
+          vehiclePerformanceFor={vehiclePerformanceFor}
+          showCalculation={showCalculation}
         />
       </div>
       <VehicleReportTable

@@ -62,8 +62,8 @@ export function VehicleReportTable({
 }: Props) {
   return (
     <div className="panel report-panel">
-      <h3>By vehicle</h3>
-      <p>Rental revenue and operating expenses for the selected period.</p>
+      <h3>Vehicle cost detail</h3>
+      <p>Detailed revenue, operating expenses, financing, depreciation, and profit by vehicle.</p>
       <table>
         <thead>
           <tr>
